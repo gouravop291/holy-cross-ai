@@ -85,17 +85,17 @@ city: "Indore, Madhya Pradesh",
 function HolyCrossCrestLogo({ size = 56, glow = true }) {
 return (
 <div
-style={{
-width: ${size}px, height: ``${size}px,
-borderRadius: ${Math.round(size * 0.28)}px, background: "linear-gradient(135deg, #fbbf24 0%, #d97706 55%, #78350f 100%)", padding: "2.5px", boxShadow: glow ? "0 0 28px rgba(251, 191, 36, 0.55)" : "none", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, }} title="Holy Cross School Monogram: The Cross & The Burning Lamp (Live and Let Live)" &gt; &lt;div style={{ width: "100%", height: "100%", borderRadius: ``${Math.round(size * 0.24)}px,
-background:
-"radial-gradient(circle at 50% 30%, #1e3a8a, #020617 85%)",
-
-display: "flex",
-alignItems: "center",
-justifyContent: "center",
-}}
->
+        style={{
+          width: `${size}px`,
+          height: `${size}px`,
+          borderRadius: `${Math.round(size * 0.24)}px`,
+          background:
+            "radial-gradient(circle at 50% 30%, #1e3a8a, #020617 85%)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
 <svg
 viewBox="0 0 64 64"
 width={size * 0.78}
