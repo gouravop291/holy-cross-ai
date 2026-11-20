@@ -215,7 +215,7 @@ keywords: [
 answer:
 "📚 Kamini Ma'am (Hindi, Sanskrit & Moral Values): Kamini Ma'am teaches Hindi, Sanskrit, and Moral Values with extraordinary depth, warmth, and eloquence—strengthening our command over classical and modern languages while nurturing strong ethical character.\n\n🇮🇳 हिंदी में: कामिनी मैम हमें हिंदी, संस्कृत और नैतिक मूल्य बहुत 
 
-ही गहराई और मधुरता के साथ पढ़ाती हैं।",
+
 hindiSummary:
 "कामिनी मैम हमें हिंदी, संस्कृत और जीवन के नैतिक मूल्य बहुत ही गहराई और मधुरता से पढ़ाती हैं।",
 },
