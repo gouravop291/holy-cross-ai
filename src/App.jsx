@@ -81,14 +81,33 @@ city: "Indore, Madhya Pradesh",
 // ============================================================================
 // SECTION 2: OFFICIAL HOLY CROSS SCHOOL CREST MONOGRAM (SVG)
 // ============================================================================
-
 function HolyCrossCrestLogo({ size = 56, glow = true }) {
-return (
-<div
+  const outerR = Math.round(size * 0.28);
+  const innerR = Math.round(size * 0.24);
+  const svgSize = Math.round(size * 0.78);
+
+  return (
+    <div
+      style={{
+        width: `${size}px`,
+        height: `${size}px`,
+        borderRadius: `${outerR}px`,
+        background:
+          "linear-gradient(135deg, #fbbf24 0%, #d97706 55%, #78350f 100%)",
+        padding: "2.5px",
+        boxShadow: glow ? "0 0 28px rgba(251, 191, 36, 0.55)" : "none",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      }}
+      title="Holy Cross School Monogram: The Cross & The Burning Lamp (Live and Let Live)"
+    >
+      <div
         style={{
-          width: `${size}px`,
-          height: `${size}px`,
-          borderRadius: `${Math.round(size * 0.24)}px`,
+          width: "100%",
+          height: "100%",
+          borderRadius: `${innerR}px`,
           background:
             "radial-gradient(circle at 50% 30%, #1e3a8a, #020617 85%)",
           display: "flex",
@@ -96,41 +115,41 @@ return (
           justifyContent: "center",
         }}
       >
-<svg
-viewBox="0 0 64 64"
-width={size * 0.78}
-height={size * 0.78}
-fill="none"
->
-<path
-d="M32 4L8 14V30C8 46.5 18.2 57.4 32 61C45.8 57.4 56 46.5 56 30V14L32 4Z"
-stroke="#fbbf24"
-strokeWidth="2.4"
-fill="rgba(30, 58, 138, 0.45)"
-/>
-<path
-d="M32 11V39M22 21H42"
-
-stroke="#fbbf24"
-strokeWidth="4.2"
-strokeLinecap="round"
-/>
-<path
-d="M23 45C23 48.5 27 51 32 51C37 51 41 48.5 41 45H23Z"
-fill="#38bdf8"
-stroke="#fbbf24"
-strokeWidth="1.5"
-/>
-<path
-d="M32 36C32 36 28.5 40 30 43C31 44.5 33 44.5 34 43C35.5 40 32 36 32 36Z"
-fill="#f59e0b"
-/>
-</svg>
-</div>
-</div>
-);
-
+        <svg
+          viewBox="0 0 64 64"
+          width={svgSize}
+          height={svgSize}
+          fill="none"
+        >
+          <path
+            d="M32 4L8 14V30C8 46.5 18.2 57.4 32 61C45.8 57.4 56 46.5 56 30V14L32 4Z"
+            stroke="#fbbf24"
+            strokeWidth="2.4"
+            fill="rgba(30, 58, 138, 0.45)"
+          />
+          <path
+            d="M32 11V39M22 21H42"
+            stroke="#fbbf24"
+            strokeWidth="4.2"
+            strokeLinecap="round"
+          />
+          <path
+            d="M23 45C23 48.5 27 51 32 51C37 51 41 48.5 41 45H23Z"
+            fill="#38bdf8"
+            stroke="#fbbf24"
+            strokeWidth="1.5"
+          />
+          <path
+            d="M32 36C32 36 28.5 40 30 43C31 44.5 33 44.5 34 43C35.5 40 32 36 32 36Z"
+            fill="#f59e0b"
+          />
+        </svg>
+      </div>
+    </div>
+  );
 }
+
+
 
 // ============================================================================
 // SECTION 3: EXTENDED BILINGUAL KNOWLEDGE BASE (FACULTY, DIARY, STUDY & GK)
