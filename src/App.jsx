@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, Fragment } from "react";
+import type { CSSProperties, ReactNode, FormEvent, ChangeEvent } from "react";
 
 // ============================================================================
-// SECTION 1: TYPESCRIPT INTERFACES & TYPES
+// SECTION 1: STRICT TYPESCRIPT DEFINITIONS (ZERO-ERROR SAFE)
 // ============================================================================
 type LanguageCode = "en" | "hi";
 type ActiveTab = "orb" | "chat" | "faculty" | "exhibition" | "cricket" | "history";
@@ -84,22 +85,60 @@ interface StudyFormula {
   askPrompt: string;
 }
 
+interface QuizQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correctIndex: number;
+  fact: string;
+}
+
 interface ToastMessage {
   id: number;
   text: string;
   type: "info" | "success" | "warn";
 }
 
-// Allow custom CSS variables on React style objects cleanly in TypeScript
-type CSSVarsStyle = React.CSSProperties & Record<string, string | number | undefined>;
+interface SpeechRecognitionEventLike {
+  results: {
+    [index: number]: {
+      [index: number]: {
+        transcript: string;
+      };
+    };
+  };
+}
+
+interface SpeechRecognitionInstance {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  onstart: (() => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+  onresult: ((ev: SpeechRecognitionEventLike) => void) | null;
+  start: () => void;
+}
+
+interface WindowWithSpeech {
+  SpeechRecognition?: new () => SpeechRecognitionInstance;
+  webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
+}
+
+// Strict-TS safe helper for CSS custom properties (--w, --h, --r, etc.)
+function makeOrbStyle(
+  vars: Record<string, string | number>,
+  extra: CSSProperties
+): CSSProperties {
+  return { ...vars, ...extra } as unknown as CSSProperties;
+}
 
 // ============================================================================
-// SECTION 2: OFFICIAL SCHOOL METADATA & VERIFIED LINKS
+// SECTION 2: OFFICIAL SCHOOL METADATA & VERIFIED PORTAL LINKS
 // ============================================================================
 const SCHOOL_CONFIG = {
   brandName: "HOLY CROSS SCHOOL AI",
-  shortBrand: "Holy Cross AI",
-  tagline: "Official Intelligent Campus & Academic Portal",
+  tagline: "Official Intelligent Campus, Voice & Academic Portal",
   schoolFullName: "Holy Cross School, Khandwa Road, Indore",
   address: "Khandwa Road, Near Khandwa Naka, Bhavna Nagar, Indore, Madhya Pradesh 452001",
   board: "CBSE (Central Board of Secondary Education) • Affiliation No. 1030624",
@@ -107,7 +146,7 @@ const SCHOOL_CONFIG = {
   motto: "Live and Let Live",
   principal: "Sr. Liasa Joseph",
   mentor: "Priyanka Ma'am (Computer Science & IT Department)",
-  architect: "Gaurav Lalwani (Student Developer, Class IX B)",
+  architect: "Gaurav Lalwani (Class IX B)",
   defaultBgPhoto: "/school-bg.jpg",
   defaultIntroVideo: "/school-intro.mp4",
   links: {
@@ -121,8 +160,17 @@ const SCHOOL_CONFIG = {
   },
 };
 
+const WELCOME_CHAT_MESSAGE: ChatMessage = {
+  id: "welcome-official",
+  sender: "ai",
+  text: `**Welcome to Holy Cross School AI!**\n\nI am the official intelligent assistant for **${SCHOOL_CONFIG.schoolFullName}** (Motto: *"${SCHOOL_CONFIG.motto}"*, Principal: **${SCHOOL_CONFIG.principal}**).\n\n- Ask me about **any of our 45+ respected teachers & office staff** for complete detailed profiles.\n- Ask **NCERT Science, Mathematics, Economics, or Social Science** questions with clear step-by-step answers.\n- Ask **personal or conversational questions** (*"How are you?"*, *"Who created you?"*) anytime.\n- Tap **🌐 EN → हिंदी** in the top bar for Hindi replies, or tap the **🎤 Mic** button to speak directly.`,
+  timestamp: "Official Welcome",
+  language: "en",
+  source: "offline-backup",
+};
+
 // ============================================================================
-// SECTION 3: COMPLETE FACULTY & STAFF DATABASE (FULL DETAILED BIOS)
+// SECTION 3: COMPLETE FACULTY & STAFF DIRECTORY (45 FULL DETAILED PROFILES)
 // ============================================================================
 const FACULTY_DATA: FacultyMember[] = [
   {
@@ -135,7 +183,7 @@ const FACULTY_DATA: FacultyMember[] = [
     featured: true,
     specialties: ["School Leadership", "Value-Based Education", "Student Welfare", "Academic Excellence"],
     description:
-      "Sr. Liasa Joseph serves as the respected Principal and Spiritual Guide of Holy Cross School, Khandwa Road, Indore. Under her visionary leadership, the institution embodies its timeless motto 'Live and Let Live,' balancing strong CBSE academic rigor with compassion, discipline, and character formation. She actively encourages innovation, student-led exhibitions, digital literacy, sports, and community service so every Holy Crossian grows intellectually, emotionally, spiritually, and socially.",
+      "Sr. Liasa Joseph serves as the respected Principal and Spiritual Guide of Holy Cross School, Khandwa Road, Indore. Under her visionary leadership, the institution lives its timeless motto 'Live and Let Live,' balancing strong CBSE academic rigor with compassion, discipline, and character formation. She actively champions student-led exhibitions, digital innovation, sports, arts, and community values so every Holy Crossian grows intellectually, emotionally, spiritually, and socially.",
   },
   {
     id: "priyanka_mam",
@@ -147,7 +195,7 @@ const FACULTY_DATA: FacultyMember[] = [
     featured: true,
     specialties: ["Computer Science", "Programming Logic", "AI Project Mentorship", "Digital Citizenship"],
     description:
-      "Priyanka Ma'am is the dedicated Computer Science and IT Mentor at Holy Cross School, Indore. She guides students beyond textbook theory into real-world programming, web development, problem-solving, and modern Artificial Intelligence concepts. Known for her supportive mentorship during tech exhibitions and coding showcases, she empowers learners to build practical, ethical, and creative digital solutions like the Holy Cross School AI portal.",
+      "Priyanka Ma'am is the dedicated Computer Science and IT Mentor at Holy Cross School, Indore. She guides students beyond textbook theory into practical programming, web architecture, logical problem-solving, and modern Artificial Intelligence concepts. Known for her inspiring mentorship during school exhibitions and tech showcases, she empowers learners to design real, ethical, and useful digital portals like Holy Cross School AI.",
   },
   {
     id: "kamini_mam",
@@ -158,7 +206,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Indian Literature, Classical Grammar & Ethics",
     specialties: ["Hindi Literature", "Sanskrit Vyakaran", "Moral Education", "Public Speaking"],
     description:
-      "Kamini Ma'am brings deep cultural richness and eloquence to the Hindi, Sanskrit, and Moral Values classrooms at Holy Cross School. She helps students appreciate classical shlokas, refined grammar, and expressive Hindi writing while weaving timeless ethical lessons into daily school life. Her classes foster respect for heritage, confident recitation, and thoughtful personal conduct.",
+      "Kamini Ma'am brings deep cultural richness and eloquence to the Hindi, Sanskrit, and Moral Values classrooms at Holy Cross School. She helps students appreciate classical shlokas, refined grammar, and expressive Hindi writing while weaving timeless ethical lessons into daily school life. Her guidance fosters respect for heritage, confident recitation, and graceful personal conduct.",
   },
   {
     id: "prachi_trivedi_mam",
@@ -169,7 +217,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Experimental Chemistry, Reactions & CBSE Board Prep",
     specialties: ["Organic & Inorganic Chemistry", "Laboratory Safety", "Titration & Practicals", "Concept Clarity"],
     description:
-      "Prachi Trivedi Ma'am is a specialist in Chemistry and hands-on laboratory instruction at Holy Cross School. She transforms complex chemical equations, periodic trends, and reaction mechanisms into clear, memorable concepts through live lab demonstrations and practical inquiry. Students rely on her structured guidance to excel in both CBSE theory papers and practical assessments.",
+      "Prachi Trivedi Ma'am specializes in Chemistry and hands-on laboratory instruction at Holy Cross School. She turns complex chemical equations, periodic trends, and reaction mechanisms into clear, memorable concepts through live lab demonstrations and practical inquiry. Students depend on her structured coaching to excel in both CBSE theory papers and practical exams.",
   },
   {
     id: "divya_mam",
@@ -180,7 +228,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Mechanics, Optics, Electricity & Numerical Problem-Solving",
     specialties: ["Laws of Motion", "Numerical Analysis", "Real-World Physics", "Science Exhibitions"],
     description:
-      "Divya Ma'am teaches Physics with a sharp focus on curiosity, real-world visualization, and step-by-step numerical mastery. Whether explaining Newton's Laws, circuits, or ray optics, she connects formulas to everyday physical phenomena so students genuinely understand how the universe works rather than memorizing equations blindly.",
+      "Divya Ma'am teaches Physics with a sharp focus on curiosity, visualization, and step-by-step numerical mastery. Whether explaining Newton's Laws, electric circuits, or ray optics, she connects equations to everyday physical phenomena so students genuinely understand how the world works instead of memorizing formulas blindly.",
   },
   {
     id: "satyapal_sir",
@@ -191,7 +239,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Algebra, Geometry, Trigonometry & Analytical Reasoning",
     specialties: ["Problem Solving", "Board Exam Strategy", "Logical Proofs", "Speed & Accuracy"],
     description:
-      "Satyapal Sir is a pillar of the Mathematics department at Holy Cross School, known for making challenging mathematical theorems accessible and systematic. Through disciplined practice, step-by-step derivation breakdowns, and exam-oriented shortcuts, he builds rock-solid confidence in students preparing for school exams, Olympiads, and CBSE board assessments.",
+      "Satyapal Sir is a pillar of the Mathematics department at Holy Cross School, renowned for making complex theorems systematic and approachable. Through disciplined practice, stepwise derivation breakdowns, and exam-ready strategies, he builds lasting mathematical confidence in students preparing for school assessments, Olympiads, and CBSE board examinations.",
   },
   {
     id: "sarika_mam",
@@ -202,7 +250,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Life Sciences, Anatomy & Expressive English Communication",
     specialties: ["Human Physiology", "Botany & Ecology", "English Comprehension", "Diagrammatic Mastery"],
     description:
-      "Sarika Ma'am uniquely bridges the worlds of Biology and English with precision and warmth. In Biology, she emphasizes clear diagrams, life processes, and scientific inquiry; in English, she nurtures fluent expression, vocabulary growth, and analytical reading. Her dual expertise helps students articulate scientific ideas clearly and effectively.",
+      "Sarika Ma'am uniquely bridges Biology and English with precision and warmth. In Biology, she emphasizes neat labeled diagrams, life processes, and scientific inquiry; in English, she nurtures fluent expression, vocabulary growth, and analytical reading. Her dual expertise trains students to present scientific ideas clearly and articulately.",
   },
   {
     id: "savita_mam",
@@ -213,7 +261,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Civics, History, Geography & Literary Analysis",
     specialties: ["Constitutional Studies", "Historical Context", "English Writing", "Debate & Discussion"],
     description:
-      "Savita Ma'am brings Social Science and English alive by encouraging thoughtful classroom discussions on society, history, governance, and literature. She trains students to write structured, evidence-backed answers and develop informed civic awareness alongside strong written and spoken English skills.",
+      "Savita Ma'am brings Social Science and English alive by encouraging thoughtful classroom discussions on society, history, governance, and literature. She trains learners to write well-structured, evidence-backed answers and build informed civic awareness alongside strong spoken and written English proficiency.",
   },
   {
     id: "lalita_mam",
@@ -224,7 +272,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Foundational Numeracy, Mental Math & Interactive Learning",
     specialties: ["Number Sense", "Mental Arithmetic", "Activity-Based Math", "Early Confidence"],
     description:
-      "Lalita Ma'am lays the essential mathematical foundation for young learners in the Primary Wing of Holy Cross School. Using patient explanations, visual aids, and engaging mental math exercises, she removes math anxiety early and turns foundational arithmetic into an enjoyable daily discovery.",
+      "Lalita Ma'am lays the vital mathematical foundation for young learners in the Primary Wing of Holy Cross School. Using patient explanations, visual aids, and engaging mental arithmetic games, she removes fear of numbers early and turns foundational math into an enjoyable daily discovery.",
   },
   {
     id: "deepa_mam",
@@ -235,7 +283,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Grammar Precision, Essay Writing & Classical Sanskrit",
     specialties: ["Hindi Vyakaran", "Sanskrit Translation", "Creative Writing", "Pronunciation"],
     description:
-      "Deepa Ma'am teaches Hindi and Sanskrit with dedication to linguistic accuracy and expressive writing. She helps students master sentence structure, grammar rules, comprehension passages, and Sanskrit verses with clarity, ensuring strong academic scores and lasting appreciation for Indian languages.",
+      "Deepa Ma'am teaches Hindi and Sanskrit with strong commitment to linguistic accuracy and expressive composition. She helps students master grammar rules, comprehension passages, and Sanskrit shlokas with ease, building strong academic scores and lasting pride in Indian languages.",
   },
   {
     id: "sandhya_mam",
@@ -246,7 +294,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Logical Computation, Algorithmic Thinking & Core Mathematics",
     specialties: ["Mathematics Logic", "Computer Fundamentals", "Digital Skills", "Structured Reasoning"],
     description:
-      "Sandhya Ma'am combines Mathematics and Computer Science to sharpen students' analytical and logical thinking. Her teaching bridges numerical accuracy with modern computer skills, helping learners understand how mathematical logic powers everyday software, spreadsheets, and coding applications.",
+      "Sandhya Ma'am unites Mathematics and Computer Science to sharpen students' analytical and logical reasoning. Her lessons connect numerical clarity with practical computer skills, showing learners how mathematical logic powers everyday software, data handling, and coding.",
   },
   {
     id: "alka_mam",
@@ -257,7 +305,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "History, Political Science, Geography & Map Work",
     specialties: ["Historical Timelines", "Map Skills", "Democratic Politics", "NCERT Answer Structuring"],
     description:
-      "Alka Ma'am specializes in Social Science, guiding students through rich historical narratives, geographical systems, and civic institutions. She places strong emphasis on accurate map work, critical thinking, and point-wise NCERT exam presentation so students connect textbook lessons with current world affairs.",
+      "Alka Ma'am specializes in Social Science, guiding students through rich historical events, geographical systems, and democratic institutions. She emphasizes accurate map work, critical evaluation, and clean point-wise NCERT exam writing so students link classroom learning with real-world developments.",
   },
   {
     id: "archana_mam",
@@ -268,7 +316,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Geography, Economics Basics & Social Awareness",
     specialties: ["Economic Literacy", "Civics & Governance", "Project Guidance", "Conceptual Clarity"],
     description:
-      "Archana Ma'am inspires curiosity in Social Science by connecting historical developments, environmental geography, and civic duties to students' daily lives in India. She mentors learners on research projects, portfolios, and clear analytical writing for top academic performance.",
+      "Archana Ma'am sparks curiosity in Social Science by linking historical movements, environmental geography, and civic responsibility to everyday life in India. She mentors students on research projects, handwritten portfolios, and analytical writing for strong academic outcomes.",
   },
   {
     id: "sumit_sir",
@@ -279,7 +327,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Communicative English, Civic Responsibility & World History",
     specialties: ["Spoken English", "Grammar & Composition", "Social Studies", "Student Mentorship"],
     description:
-      "Sumit Sir teaches English and Social Studies with an energetic, interactive style that encourages students to speak up, debate constructively, and think independently. His classes strengthen both written communication and global awareness, preparing students to be articulate and responsible citizens.",
+      "Sumit Sir teaches English and Social Studies with an energetic, interactive style that motivates students to speak confidently, debate respectfully, and think independently. His guidance builds strong communication skills alongside historical and civic maturity.",
   },
   {
     id: "venus_mam",
@@ -290,7 +338,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "English Literature, Poetic Appreciation & Formal Writing",
     specialties: ["Literature Analysis", "Grammar Mastery", "Formal Letters & Essays", "Reading Fluency"],
     description:
-      "Venus Ma'am brings passion and elegance to the English department at Holy Cross School. She guides students through prose, poetry, grammar nuances, and structured composition formats, cultivating refined expression, critical interpretation, and confident public communication.",
+      "Venus Ma'am brings passion and polish to the English department at Holy Cross School. She guides students through prose, poetry, grammar nuances, and structured formal writing, cultivating refined vocabulary, thoughtful interpretation, and articulate public speaking.",
   },
   {
     id: "rama_mam",
@@ -299,9 +347,9 @@ const FACULTY_DATA: FacultyMember[] = [
     category: "Languages",
     wing: "Middle & Senior Wing",
     experienceFocus: "Literary Expression, Shloka Meaning & Grammar",
-    specialties: ["Hindi Poetry & Prose", "Sanskrit Grammar", "Handwriting & Neatness", "Cultural Values"],
+    specialties: ["Hindi Poetry & Prose", "Sanskrit Grammar", "Neat Presentation", "Cultural Values"],
     description:
-      "Rama Ma'am is dedicated to building strong command over both Hindi and Sanskrit. With calm, thorough instruction, she helps students understand classical roots, poetic devices, and clear grammatical construction, fostering pride and fluency in India's linguistic heritage.",
+      "Rama Ma'am is dedicated to developing strong mastery in both Hindi and Sanskrit. With calm, detailed explanations, she helps students understand classical roots, literary devices, and grammatical precision while nurturing appreciation for India's rich literary traditions.",
   },
   {
     id: "preeti_mam",
@@ -312,7 +360,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Language Fluency, Vocabulary Enrichment & Exam Readiness",
     specialties: ["Hindi Composition", "Sanskrit Lessons", "Reading Comprehension", "Oral Recitation"],
     description:
-      "Preeti Ma'am makes learning Hindi and Sanskrit engaging and structured for every student. By breaking down grammar concepts into simple rules and encouraging regular reading and writing practice, she ensures learners build lasting accuracy and confidence in both languages.",
+      "Preeti Ma'am makes learning Hindi and Sanskrit clear and engaging for every student. By breaking down grammar topics into intuitive steps and encouraging steady reading and writing practice, she helps learners build lasting fluency and exam confidence.",
   },
   {
     id: "jyoti_mam",
@@ -323,7 +371,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Reading Comprehension, Grammar & Creative Expression",
     specialties: ["Creative Writing", "Vocabulary Building", "Spoken Fluency", "Interactive Reading"],
     description:
-      "Jyoti Ma'am nurtures a love for the English language through lively storytelling, interactive grammar practice, and guided composition. She focuses on pronunciation, sentence clarity, and creative thinking so students communicate comfortably in academic and real-world settings.",
+      "Jyoti Ma'am nurtures a genuine love for English through engaging storytelling, structured grammar exercises, and guided creative writing. She focuses on pronunciation, sentence clarity, and imagination so students express themselves effortlessly.",
   },
   {
     id: "anjana_mam",
@@ -334,7 +382,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Cellular Biology, Environmental Science & Scientific Method",
     specialties: ["Biology Concepts", "Science Models", "Lab Observation", "NCERT Clarity"],
     description:
-      "Anjana Ma'am guides students through the fascinating world of Biology and general Science with clarity and enthusiasm. She encourages hands-on observation, well-labeled diagrams, and working science models that deepen understanding of ecosystems, human anatomy, and natural phenomena.",
+      "Anjana Ma'am guides students through Biology and general Science with enthusiasm and depth. She encourages close observation, clean scientific diagrams, and working 3D models that strengthen understanding of ecosystems, human anatomy, and natural sciences.",
   },
   {
     id: "sr_lisa_t",
@@ -345,7 +393,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Character Formation, Empathy & English Communication",
     specialties: ["Value Education", "English Literature", "Ethical Leadership", "Compassionate Guidance"],
     description:
-      "Sr. Lisa T. blends strong English instruction with deeply meaningful Value Education rooted in Holy Cross traditions. She inspires students to practice kindness, honesty, gratitude, and social responsibility while polishing their language skills and personal discipline.",
+      "Sr. Lisa T. blends strong English instruction with deeply meaningful Value Education rooted in Holy Cross principles. She inspires learners to practice empathy, integrity, gratitude, and service to others while refining their language skills and personal discipline.",
   },
   {
     id: "ekta_mam",
@@ -356,7 +404,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Algebraic Equations, Mensuration & Stepwise Problem Solving",
     specialties: ["Algebra & Equations", "Geometry", "Doubt Clearing", "Practice Drills"],
     description:
-      "Ekta Ma'am is dedicated to making Mathematics clear, approachable, and rewarding for every learner. Through patient doubt-clearing sessions and methodical step-by-step practice, she helps students overcome fear of numbers and achieve consistent accuracy in school and competitive exams.",
+      "Ekta Ma'am makes Mathematics logical, accessible, and rewarding for every learner. Through patient doubt-clearing and structured step-by-step practice, she helps students overcome hesitation with numbers and score consistently well in exams.",
   },
   {
     id: "shweta_verma_mam",
@@ -367,7 +415,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Integrated Science, Digital Skills & Responsible Ethics",
     specialties: ["General Science", "Computer Studies", "Value Education", "Exhibition Projects"],
     description:
-      "Shweta Verma Ma'am wears multiple hats across Science, Computer Education, and Value Education. Her multidisciplinary approach teaches students how scientific inquiry and technology must always go hand in hand with strong moral values and responsible digital citizenship.",
+      "Shweta Verma Ma'am contributes across Science, Computer Education, and Value Education. Her multidisciplinary teaching shows students how scientific curiosity and modern computing must always go hand in hand with strong ethics and responsible digital citizenship.",
   },
   {
     id: "shweta_vyas_mam",
@@ -378,7 +426,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Conceptual Mathematics, Data Handling & Exam Techniques",
     specialties: ["Number Systems", "Statistics & Data", "Logical Reasoning", "Concept Reinforcement"],
     description:
-      "Shweta Vyas Ma'am guides students through core mathematical concepts with patience, structure, and real-world examples. She emphasizes understanding the 'why' behind every formula so learners can confidently tackle unfamiliar application questions in examinations.",
+      "Shweta Vyas Ma'am teaches core Mathematics with clarity, patience, and practical everyday analogies. She emphasizes understanding the reasoning behind every theorem so students confidently solve unfamiliar application problems during exams.",
   },
   {
     id: "nisha_sharma_mam",
@@ -389,7 +437,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Arithmetic Mastery, Fractions, Ratios & Geometry",
     specialties: ["Arithmetic Foundations", "Geometric Constructions", "Analytical Thinking", "Daily Practice"],
     description:
-      "Nisha Sharma Ma'am strengthens students' core mathematical fluency through structured classroom exercises and clear visual explanations. Her supportive guidance ensures every student keeps pace with the syllabus and builds a strong bridge toward higher-grade mathematics.",
+      "Nisha Sharma Ma'am strengthens students' core numerical fluency through organized classroom drills and clear visual explanations. Her supportive coaching ensures learners keep steady pace with the syllabus and transition smoothly into higher-grade mathematics.",
   },
   {
     id: "neha_yadav_mam",
@@ -400,7 +448,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Communication Skills, Grammar & Expressive Reading",
     specialties: ["English Grammar", "Reading Skills", "Essay Structure", "Confidence Building"],
     description:
-      "Neha Yadav Ma'am fosters clear and confident English communication through engaging classroom activities, reading sessions, and systematic grammar lessons. She encourages students to express original thoughts clearly both on paper and in front of an audience.",
+      "Neha Yadav Ma'am builds confident English communication through interactive reading circles, systematic grammar practice, and structured writing workshops. She encourages learners to articulate original ideas clearly both in notebooks and on stage.",
   },
   {
     id: "neha_shukla_mam",
@@ -411,7 +459,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Everyday Science, Experiments & Inquiry-Based Learning",
     specialties: ["Scientific Inquiry", "NCERT Experiments", "Environmental Awareness", "Concept Mapping"],
     description:
-      "Neha Shukla Ma'am makes Science exciting by encouraging observation, questioning, and hands-on experimentation. Her lessons simplify scientific principles across physics, chemistry, and biology, inspiring young minds to explore STEM projects and science exhibitions.",
+      "Neha Shukla Ma'am makes Science engaging by encouraging active questioning, observation, and hands-on experiments. Her clear explanations simplify physics, chemistry, and biology fundamentals and inspire students to build creative STEM exhibition models.",
   },
   {
     id: "ashwini_mam",
@@ -422,7 +470,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Language Fluency, Literature & Effective Presentation",
     specialties: ["Literature Comprehension", "Writing Skills", "Elocution", "Grammar Accuracy"],
     description:
-      "Ashwini Ma'am helps students refine their command of English through rich textual exploration, thoughtful writing assignments, and attentive feedback. She motivates learners to read widely and present their ideas with poise and clarity.",
+      "Ashwini Ma'am helps students elevate their English proficiency through thoughtful literary discussion, structured writing practice, and constructive feedback. She encourages wide reading and poised presentation in academic and co-curricular forums.",
   },
   {
     id: "ruby_mam",
@@ -433,7 +481,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Early Childhood Growth, Joyful Learning & Foundational Skills",
     specialties: ["Primary Literacy", "Activity-Based Learning", "Student Care", "Creative Classroom"],
     description:
-      "Ruby Ma'am is a caring and dedicated Primary Wing teacher at Holy Cross School, Indore. She creates a warm, joyful, and encouraging classroom environment where young learners build strong foundational skills in reading, writing, numeracy, and good habits during their most formative school years.",
+      "Ruby Ma'am is a caring and dedicated Primary Wing teacher at Holy Cross School, Indore. She nurtures a joyful, warm, and encouraging classroom environment where young students develop strong foundations in reading, writing, numeracy, and good daily habits during their formative years.",
   },
   {
     id: "vineeta_mam",
@@ -444,7 +492,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Chemical Concepts, Everyday Science & Analytical Clarity",
     specialties: ["Chemistry Foundations", "Science Practicals", "Concept Simplification", "Exam Readiness"],
     description:
-      "Vineeta Ma'am teaches Chemistry and Science with clear explanations and practical relevance. She helps students decode chemical formulas, matter properties, and scientific reasoning step by step, building strong analytical foundations for senior secondary sciences.",
+      "Vineeta Ma'am teaches Chemistry and Science with clear, well-paced instruction and real-life relevance. She helps learners decode chemical formulas, properties of matter, and experimental reasoning step by step for strong senior-wing readiness.",
   },
   {
     id: "barkha_mam",
@@ -455,7 +503,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Foundational Academics, Storytelling & Holistic Early Care",
     specialties: ["Early Learning", "Interactive Activities", "Good Manners & Discipline", "Individual Attention"],
     description:
-      "Barkha Ma'am nurtures young Holy Crossians in the Primary Wing with warmth, patience, and creative teaching methods. Through stories, visual games, and attentive personal care, she helps children look forward to school every day while steadily mastering core basics.",
+      "Barkha Ma'am nurtures young Holy Crossians in the Primary Wing with patience, affection, and creative classroom methods. Through stories, visual learning games, and attentive care, she helps children love coming to school while steadily mastering essential basics.",
   },
   {
     id: "sheetal_mam",
@@ -466,7 +514,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Language Basics, Correct Pronunciation & Sanskrit Appreciation",
     specialties: ["Hindi Writing", "Sanskrit Basics", "Grammar Clarity", "Reading Practice"],
     description:
-      "Sheetal Ma'am guides students in mastering Hindi and Sanskrit with gentle encouragement and structured practice. She emphasizes neat presentation, accurate spelling, and clear comprehension so learners gain comfort and pride in both languages.",
+      "Sheetal Ma'am guides students in Hindi and Sanskrit through gentle encouragement and consistent practice. She highlights neat presentation, accurate spelling, and clear comprehension so learners build lasting confidence in both languages.",
   },
   {
     id: "bhawana_mam",
@@ -477,7 +525,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Practical Computing, Coding Basics & Mathematical Thinking",
     specialties: ["Computer Lab Skills", "Mathematics", "Logical Problem Solving", "Digital Projects"],
     description:
-      "Bhawana Ma'am empowers students across Computer Science and Mathematics by connecting classroom logic with practical computer lab exercises. Her guidance helps students develop strong analytical reasoning alongside essential digital skills for the modern world.",
+      "Bhawana Ma'am empowers students across Computer Science and Mathematics by pairing classroom logic with practical computer lab applications. Her guidance helps learners strengthen analytical thinking alongside vital digital fluency.",
   },
   {
     id: "veena_mam",
@@ -488,7 +536,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Drawing, Painting, Craftsmanship & Visual Creativity",
     specialties: ["Sketching & Painting", "Craft & Exhibition Models", "Color Theory", "Artistic Expression"],
     description:
-      "Veena Ma'am leads the Fine Arts program at Holy Cross School, nurturing imagination, aesthetic sense, and artistic confidence across all age groups. From sketching and painting to vibrant school exhibition displays and craft competitions, she helps students express their creativity beautifully.",
+      "Veena Ma'am leads Fine Arts at Holy Cross School, awakening imagination, aesthetic sense, and visual confidence across all grades. From sketching and watercolor painting to vibrant exhibition decorations and craft competitions, she helps students express creativity with pride.",
   },
   {
     id: "pinky_mam",
@@ -499,7 +547,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Reading Culture, Reference Research & Book Curation",
     specialties: ["Library Management", "Reading Recommendations", "Academic References", "Knowledge Discovery"],
     description:
-      "Pinky Ma'am manages the Holy Cross School Library, maintaining a peaceful, well-organized hub of encyclopedias, storybooks, NCERT references, and periodicals. She encourages students to explore books beyond the syllabus, fostering lifelong reading habits and independent research skills.",
+      "Pinky Ma'am curates and manages the Holy Cross School Library, maintaining a welcoming sanctuary of encyclopedias, storybooks, NCERT reference texts, and periodicals. She motivates students to explore beyond textbooks and cultivate lifelong reading habits.",
   },
   {
     id: "jay_sir",
@@ -510,7 +558,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Choreography, Rhythm, Annual Day & Cultural Performances",
     specialties: ["Classical & Contemporary Dance", "Stage Choreography", "Rhythm & Fitness", "Stage Confidence"],
     description:
-      "Jay Sir brings rhythm, energy, and artistic flair to Holy Cross School as the Dance Instructor. He choreographs memorable performances for Annual Days, Independence Day, cultural festivals, and inter-school competitions, helping students build coordination, teamwork, and stage confidence.",
+      "Jay Sir brings rhythm, energy, and artistic flair to Holy Cross School as the Dance Instructor. He choreographs standout performances for Annual Days, national celebrations, and inter-school cultural competitions, nurturing coordination, teamwork, and stage presence.",
   },
   {
     id: "deepak_sir",
@@ -521,7 +569,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Physical Fitness, Team Sports, Discipline & Sportsmanship",
     specialties: ["Cricket & Athletics", "Physical Conditioning", "Sports Day Training", "Team Spirit"],
     description:
-      "Deepak Sir leads Sports and Physical Education at Holy Cross School, championing fitness, discipline, and true sportsmanship on the playground. From morning PT drills and inter-house tournaments to cricket, athletics, and team games, he inspires students to stay active, resilient, and united.",
+      "Deepak Sir leads Sports and Physical Education at Holy Cross School, championing physical fitness, teamwork, and true sportsmanship on the ground. From morning drills and Annual Sports Day to cricket, track events, and inter-house tournaments, he keeps Holy Crossians active and resilient.",
   },
   {
     id: "simran_mam",
@@ -532,7 +580,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Current Affairs, Quizzes, Geography & Civic Awareness",
     specialties: ["General Knowledge", "Quiz Preparation", "Social Studies", "Curiosity Building"],
     description:
-      "Simran Ma'am widens students' horizons through General Knowledge and Social Studies. She keeps classes dynamic with current affairs, quiz trivia, and engaging discussions about India and the world, encouraging students to stay curious and well-informed.",
+      "Simran Ma'am broadens students' outlook through General Knowledge and Social Studies. She keeps lessons lively with current affairs, quiz rounds, and fascinating facts about India and the world so learners stay curious and well-informed.",
   },
   {
     id: "jenny_mam",
@@ -543,7 +591,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Early Literacy, Joyful Engagement & Student Confidence",
     specialties: ["Primary Teaching", "Creative Activities", "Reading Fluency", "Supportive Mentorship"],
     description:
-      "Jenny Ma'am brings energy, kindness, and creativity to the Primary Wing at Holy Cross School. She supports young students in developing strong study habits, clear communication, and cheerful classroom teamwork right from their early years.",
+      "Jenny Ma'am brings warmth, creativity, and cheerful energy to the Primary Wing at Holy Cross School. She supports young learners in developing disciplined study habits, expressive speaking, and friendly teamwork from their earliest school years.",
   },
   {
     id: "bharti_mam",
@@ -554,7 +602,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Core Foundational Subjects & Caring Classroom Guidance",
     specialties: ["Foundational Skills", "Student Encouragement", "Neat Presentation", "Interactive Learning"],
     description:
-      "Bharti Ma'am guides Primary Wing students with steady care and structured foundational teaching. She ensures every child receives patient encouragement to ask questions, participate actively, and grow steadily in confidence.",
+      "Bharti Ma'am guides Primary Wing learners with steady care and structured foundational teaching. She ensures every child feels encouraged to ask questions, participate joyfully, and grow steadily in confidence.",
   },
   {
     id: "ravi_sir",
@@ -565,7 +613,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Academic Support, Student Discipline & Campus Mentorship",
     specialties: ["Classroom Instruction", "Student Guidance", "School Events", "Team Coordination"],
     description:
-      "Ravi Sir is a dedicated faculty member at Holy Cross School who contributes enthusiastically to classroom learning, student discipline, and school-wide academic and co-curricular initiatives.",
+      "Ravi Sir is a dedicated faculty member at Holy Cross School who contributes wholeheartedly to classroom learning, student discipline, and school-wide academic and co-curricular activities.",
   },
   {
     id: "deepshika_mam",
@@ -576,7 +624,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Student Development, Academic Clarity & Co-Curricular Support",
     specialties: ["Academic Instruction", "Student Mentorship", "Classroom Engagement", "Event Support"],
     description:
-      "Deepshika Ma'am is a committed educator at Holy Cross School dedicated to nurturing academic understanding, positive classroom participation, and overall student growth.",
+      "Deepshika Ma'am is a committed educator at Holy Cross School focused on fostering clear academic understanding, positive classroom participation, and well-rounded student growth.",
   },
   {
     id: "subash_sir",
@@ -587,7 +635,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Hardware, Audio-Visual Setup, Smart Classrooms & Exhibition Tech",
     specialties: ["Technical Infrastructure", "Smart Class Support", "Audio-Visual Systems", "Rapid Troubleshooting"],
     description:
-      "Subash Sir serves as the dependable Lead Technician in the Office and Technical Staff of Holy Cross School, Indore. He keeps the campus running smoothly behind the scenes—maintaining computer systems, smart classrooms, sound setups, and technical infrastructure essential for daily classes, assemblies, and major school exhibitions.",
+      "Subash Sir serves as the dependable Lead Technician in the Office and Technical Staff of Holy Cross School, Indore. He keeps campus technology running smoothly behind the scenes—maintaining computer labs, smart classrooms, audio setups, and technical infrastructure vital for daily lessons, assemblies, and major school exhibitions.",
   },
   {
     id: "gloria_mam",
@@ -598,7 +646,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Admissions Support, Parent Coordination & Records Management",
     specialties: ["School Administration", "Parent Assistance", "Student Records", "Front-Office Coordination"],
     description:
-      "Gloria Ma'am plays a key role in the Holy Cross School administrative office, assisting parents, students, and teachers with official documentation, schedules, and day-to-day school inquiries with courtesy and efficiency.",
+      "Gloria Ma'am plays an essential role in the Holy Cross School administrative office, assisting parents, students, and educators with official documentation, schedules, and day-to-day school inquiries with courtesy and precision.",
   },
   {
     id: "rosemary_mam",
@@ -609,7 +657,7 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Administrative Operations, Documentation & Communication",
     specialties: ["Office Management", "Official Records", "Parent Support", "School Coordination"],
     description:
-      "Rosemary Ma'am ensures smooth administrative coordination at the Holy Cross School office. Her organized handling of records, circulars, and visitor assistance supports both faculty operations and parent communication seamlessly.",
+      "Rosemary Ma'am ensures smooth administrative operations at the Holy Cross School office. Her organized handling of records, notices, and visitor inquiries keeps parent communication and school coordination seamless.",
   },
   {
     id: "sasmith_jasmeet",
@@ -620,12 +668,12 @@ const FACULTY_DATA: FacultyMember[] = [
     experienceFocus: "Daily Office Support, Record-Keeping & Visitor Assistance",
     specialties: ["Administrative Support", "Student Services", "Office Coordination", "Helpful Guidance"],
     description:
-      "Sasmith Ma'am and Jasmeet form an essential part of the Holy Cross School office administration team, supporting daily operations, student documentation, and welcoming assistance for parents and campus guests.",
+      "Sasmith Ma'am and Jasmeet form a vital part of the Holy Cross School office administration team, supporting daily records, student services, and warm, helpful assistance for parents and visiting guests.",
   },
 ];
 
 // ============================================================================
-// SECTION 4: EXHIBITION SHOWCASE, PROMPTS & NCERT STUDY FORMULA VAULT
+// SECTION 4: PROMPTS, NCERT FORMULAS & INTERACTIVE EXHIBITION QUIZ
 // ============================================================================
 const RECOMMENDED_PROMPTS: Record<string, { en: string[]; hi: string[] }> = {
   Exhibition: {
@@ -661,7 +709,7 @@ const RECOMMENDED_PROMPTS: Record<string, { en: string[]; hi: string[] }> = {
       "Explain Newton's Three Laws of Motion with daily examples",
       "Compare Direct Tax and Indirect Tax clearly for students",
       "Solve 3x + 7 = 28 step-by-step and verify the answer",
-      "Give a high-efficiency 95%+ CBSE board exam study plan",
+      "Give a high-efficiency 95%+ CBSE exam study schedule",
     ],
     hi: [
       "न्यूटन के गति के तीनों नियमों को आसान उदाहरणों से समझाएं",
@@ -675,7 +723,7 @@ const RECOMMENDED_PROMPTS: Record<string, { en: string[]; hi: string[] }> = {
       "Hello! How are you doing today?",
       "Who created Holy Cross School AI?",
       "Tell me a motivating quote for students before exams",
-      "How can parents support their children's learning at home?",
+      "How can parents support their child's learning at home?",
     ],
     hi: [
       "नमस्ते! आप कैसे हैं और आज क्या मदद कर सकते हैं?",
@@ -688,8 +736,8 @@ const RECOMMENDED_PROMPTS: Record<string, { en: string[]; hi: string[] }> = {
     en: [
       "List top ICC records of Virat Kohli and Rohit Sharma",
       "Explain the physics of swing and spin bowling in cricket",
-      "Analyze MS Dhoni's greatest captaincy moments",
-      "Best fitness and practice routine for young cricketers",
+      "Analyze MS Dhoni's greatest captaincy decisions",
+      "Best fitness and batting practice routine for students",
     ],
     hi: [
       "विराट कोहली और रोहित शर्मा के प्रमुख आईसीसी रिकॉर्ड बताएं",
@@ -707,90 +755,136 @@ const NCERT_FORMULAS: StudyFormula[] = [
     title: "Newton's Second Law of Motion",
     formula: "F = m × a",
     explanation: "Force equals mass multiplied by acceleration (SI Unit: Newton, N).",
-    askPrompt: "Explain Newton's Second Law (F = ma) with 2 numerical examples for CBSE students.",
+    askPrompt: "Explain Newton's Second Law (F = ma) with 2 solved numerical examples for CBSE students.",
   },
   {
     id: "phy_kinematics",
     subject: "Physics",
     title: "Three Equations of Motion",
     formula: "v = u + at  |  s = ut + ½at²  |  v² - u² = 2as",
-    explanation: "Relates initial velocity (u), final velocity (v), acceleration (a), time (t), and displacement (s).",
-    askPrompt: "Derive and explain the three equations of motion clearly with an example.",
+    explanation: "Links initial velocity (u), final velocity (v), acceleration (a), time (t), and displacement (s).",
+    askPrompt: "Explain the three equations of motion clearly with a simple numerical example.",
   },
   {
     id: "phy_ohm",
     subject: "Physics",
-    title: "Ohm's Law & Electrical Power",
+    title: "Ohm's Law & Electric Power",
     formula: "V = I × R   |   P = V × I = I²R",
     explanation: "Potential difference across a conductor is directly proportional to current at constant temperature.",
-    askPrompt: "Explain Ohm's Law and solve a sample circuit problem step-by-step.",
+    askPrompt: "Explain Ohm's Law and solve a sample electric circuit problem step-by-step.",
   },
   {
     id: "chem_mole",
     subject: "Chemistry",
-    title: "Mole Concept Formula",
+    title: "Mole Concept & Avogadro Constant",
     formula: "n = Given Mass (m) / Molar Mass (M) = N / 6.022 × 10²³",
-    explanation: "Links mass of a substance to number of moles and Avogadro's constant.",
-    askPrompt: "Explain the Mole Concept and Avogadro's number with a simple solved problem.",
+    explanation: "Connects mass of a substance with number of moles and total particles.",
+    askPrompt: "Explain the Mole Concept and Avogadro's number with a clear solved example.",
   },
   {
     id: "chem_ph",
     subject: "Chemistry",
     title: "Acids, Bases & pH Scale",
     formula: "pH < 7 (Acidic)  |  pH = 7 (Neutral)  |  pH > 7 (Basic)",
-    explanation: "Measures hydrogen ion concentration; universal indicator turns red in strong acid and violet in strong base.",
-    askPrompt: "Explain the pH scale and its importance in everyday life (digestion, tooth decay, soil).",
+    explanation: "Measures hydrogen ion concentration; essential in digestion, soil fertility, and dental care.",
+    askPrompt: "Explain the pH scale and its importance in everyday life for CBSE Science.",
   },
   {
     id: "math_quad",
     subject: "Mathematics",
     title: "Quadratic Formula",
     formula: "x = [ -b ± √(b² - 4ac) ] / 2a",
-    explanation: "Finds roots of ax² + bx + c = 0; Discriminant D = b² - 4ac determines the nature of roots.",
+    explanation: "Finds roots of ax² + bx + c = 0; Discriminant D = b² - 4ac defines root nature.",
     askPrompt: "Solve x² - 5x + 6 = 0 using the quadratic formula and explain the discriminant.",
   },
   {
     id: "math_heron",
     subject: "Mathematics",
-    title: "Heron's Formula (Area of Triangle)",
+    title: "Heron's Formula (Triangle Area)",
     formula: "Area = √[ s(s - a)(s - b)(s - c) ],  where s = (a + b + c)/2",
-    explanation: "Calculates the exact area of any triangle when all three side lengths are known.",
-    askPrompt: "Show how to calculate the area of a triangle with sides 13 cm, 14 cm, and 15 cm using Heron's Formula.",
+    explanation: "Calculates the exact area of any triangle directly from its three side lengths.",
+    askPrompt: "Find the area of a triangle with sides 13 cm, 14 cm, and 15 cm using Heron's Formula.",
   },
   {
     id: "eco_tax",
     subject: "Economics",
     title: "Direct Tax vs. Indirect Tax",
-    formula: "Direct (Income Tax) → Paid Directly | Indirect (GST) → Shifted via Goods/Services",
-    explanation: "Direct taxes are progressive and non-transferable; indirect taxes are levied on consumption.",
-    askPrompt: "Explain Direct Tax vs Indirect Tax with Indian examples like Income Tax and GST.",
+    formula: "Direct (Income Tax) → Paid Directly | Indirect (GST) → Shifted via Goods",
+    explanation: "Direct taxes are non-transferable and progressive; indirect taxes apply on consumption.",
+    askPrompt: "Compare Direct Tax and Indirect Tax with Indian examples like Income Tax and GST.",
   },
   {
     id: "eco_demand",
     subject: "Economics",
     title: "Law of Demand & Supply",
-    formula: "Price ↑ ⇒ Demand ↓ & Supply ↑   (Ceteris Paribus)",
+    formula: "Price ↑ ⇒ Demand ↓ & Supply ↑   (Other Factors Constant)",
     explanation: "Market equilibrium occurs where quantity demanded equals quantity supplied.",
-    askPrompt: "Explain the Law of Demand, Law of Supply, and Market Equilibrium with an everyday market example.",
+    askPrompt: "Explain the Law of Demand, Law of Supply, and Market Equilibrium simply.",
   },
   {
     id: "sst_democracy",
     subject: "Social Science",
     title: "Three Organs of Indian Democracy",
     formula: "Legislature (Makes Laws) • Executive (Implements) • Judiciary (Protects)",
-    explanation: "Horizontal power-sharing creates checks and balances under the Constitution of India.",
+    explanation: "Horizontal power sharing guarantees constitutional checks and balances.",
     askPrompt: "Explain horizontal power sharing between Legislature, Executive, and Judiciary in India.",
   },
 ];
 
-// ============================================================================
-// SECTION 5: OFFLINE / EXHIBITION FAILSAFE BRAIN (ZERO CRASH GUARANTEE)
-// ============================================================================
-function getOfflineBackupAnswer(question: string, language: LanguageCode, user: UserProfile | null): string {
-  const q = question.toLowerCase().trim();
-  const userName = user?.name && user.name !== "Guest Visitor" ? `, ${user.name}` : "";
+const EXHIBITION_QUIZ: QuizQuestion[] = [
+  {
+    id: "q1",
+    question: "What is the official motto of Holy Cross School, Khandwa Road, Indore?",
+    options: ["Knowledge is Power", "Live and Let Live", "Work is Worship", "Truth Alone Triumphs"],
+    correctIndex: 1,
+    fact: "'Live and Let Live' reflects Holy Cross School's core mission of harmony, empathy, and holistic growth.",
+  },
+  {
+    id: "q2",
+    question: "Who serves as the Principal & Spiritual Guide of Holy Cross School, Indore?",
+    options: ["Sr. Liasa Joseph", "Priyanka Ma'am", "Kamini Ma'am", "Sarika Ma'am"],
+    correctIndex: 0,
+    fact: "Sr. Liasa Joseph leads Holy Cross School, Indore with vision, compassion, and academic excellence.",
+  },
+  {
+    id: "q3",
+    question: "In Physics, which formula represents Newton's Second Law of Motion?",
+    options: ["E = mc²", "V = I × R", "F = m × a", "P = W / t"],
+    correctIndex: 2,
+    fact: "Force equals mass multiplied by acceleration (F = ma), measured in Newtons (N).",
+  },
+  {
+    id: "q4",
+    question: "Which of the following is an example of an Indirect Tax in India?",
+    options: ["Income Tax", "Corporate Tax", "GST (Goods & Services Tax)", "Wealth Tax"],
+    correctIndex: 2,
+    fact: "GST is an indirect tax collected on goods and services, whereas Income Tax is paid directly to the government.",
+  },
+  {
+    id: "q5",
+    question: "Why does Holy Cross School AI use a Vercel Serverless Backend (/api/chat)?",
+    options: [
+      "To hide and protect the AI API key securely on the server",
+      "To slow down the website",
+      "To remove Hindi language support",
+      "To require every parent to buy an API key",
+    ],
+    correctIndex: 0,
+    fact: "Keeping API keys in Vercel Environment Variables protects them completely while giving every visitor instant AI access.",
+  },
+];
 
-  // 1. Personal & conversational greetings
+// ============================================================================
+// SECTION 5: OFFLINE EXHIBITION FAILSAFE ENGINE (INSTANT BACKUP ANSWERS)
+// ============================================================================
+function getOfflineBackupAnswer(
+  question: string,
+  language: LanguageCode,
+  user: UserProfile | null
+): string {
+  const q = question.toLowerCase().trim();
+  const visitor = user?.name && user.name !== "Exhibition Visitor" ? `, ${user.name}` : "";
+
   if (
     /^(hi|hello|hey|namaste|good morning|good afternoon|good evening)\b/.test(q) ||
     q.includes("how are you") ||
@@ -798,31 +892,36 @@ function getOfflineBackupAnswer(question: string, language: LanguageCode, user: 
     q.includes("कैसे हैं")
   ) {
     if (language === "hi") {
-      return `**नमस्ते${userName}!** मैं **होली क्रॉस स्कूल एआई** हूँ और बिल्कुल ठीक हूँ, धन्यवाद!\n\nमैं होली क्रॉस स्कूल, खंडवा रोड, इंदौर के बारे में जानकारी, हमारे सभी शिक्षकों का विवरण, NCERT पढ़ाई, गणित, विज्ञान और क्रिकेट से जुड़े सवालों के जवाब देने के लिए तैयार हूँ। आज मैं आपकी क्या मदद करूँ?`;
+      return `**नमस्ते${visitor}!** मैं **होली क्रॉस स्कूल एआई** हूँ और बिल्कुल ठीक हूँ, धन्यवाद!\n\nमैं होली क्रॉस स्कूल, खंडवा रोड, इंदौर की जानकारी, हमारे सभी 45+ शिक्षकों का विवरण, NCERT पढ़ाई, गणित, विज्ञान और क्रिकेट से जुड़े सवालों के जवाब देने के लिए तैयार हूँ। आज मैं आपकी क्या मदद करूँ?`;
     }
-    return `**Hello${userName}!** I am **Holy Cross School AI**, and I am doing wonderful—thank you for asking!\n\nI am here to welcome parents, judges, teachers, and students to our exhibition portal. Ask me about **Holy Cross School, Indore**, any of our **45+ respected faculty members**, NCERT academics, science, mathematics, or cricket!`;
+    return `**Hello${visitor}!** I am **Holy Cross School AI**, and I am doing wonderful—thank you for asking!\n\nI am honored to welcome parents, judges, teachers, and students to our exhibition showcase. Ask me about **Holy Cross School, Indore**, any of our **45+ faculty & office staff members**, NCERT academics, science, mathematics, or cricket!`;
   }
 
-  // 2. Creator / Architecture questions
-  if (q.includes("who made") || q.includes("who built") || q.includes("who created") || q.includes("किसने बनाया")) {
+  if (
+    q.includes("who made") ||
+    q.includes("who built") ||
+    q.includes("who created") ||
+    q.includes("किसने बनाया")
+  ) {
     if (language === "hi") {
-      return `**होली क्रॉस स्कूल एआई का निर्माण**\n\nइस आधिकारिक पोर्टल को **गौरव लालवानी (कक्षा IX B)** ने हमारी कंप्यूटर साइंस और आईटी मेंटर **प्रियंका मैम** के मार्गदर्शन तथा आदरणीय प्रधानाचार्या **सिस्टर लियासा जोसेफ** की प्रेरणा से तैयार किया है।`;
+      return `**होली क्रॉस स्कूल एआई का निर्माण**\n\nइस आधिकारिक एआई पोर्टल को **गौरव लालवानी (कक्षा IX B)** ने कंप्यूटर साइंस और आईटी मेंटर **प्रियंका मैम** के मार्गदर्शन तथा आदरणीय प्रधानाचार्या **सिस्टर लियासा जोसेफ** की प्रेरणा से तैयार किया है।`;
     }
-    return `**About the Creator & Architecture**\n\n**Holy Cross School AI** was designed and built by **Gaurav Lalwani (Class IX B)** under the mentorship of **Priyanka Ma'am (Computer Science & IT)** and the inspiring leadership of Principal **Sr. Liasa Joseph**.\n\n- **Frontend:** React + TypeScript + Vite with a custom 60FPS Morphing Orb & Dual-Tab interface.\n- **Backend:** Secure Vercel Serverless API connected to ultra-fast AI inference with automatic failover.\n- **Voice & Accessibility:** Built-in English/Hindi Speech Recognition and Read Aloud synthesis.`;
+    return `**About the Creator & Technical Architecture**\n\n**Holy Cross School AI** was architected by **${SCHOOL_CONFIG.architect}** under the mentorship of **${SCHOOL_CONFIG.mentor}** and the inspiring leadership of Principal **${SCHOOL_CONFIG.principal}**.\n\n- **Frontend:** React + TypeScript + Vite featuring a 60FPS Morphing Orb & Dual-Tab interface.\n- **Backend:** Secure Vercel Serverless API (`/api/chat`) keeping keys safely hidden with automatic failover.\n- **Voice & Bilingual:** Built-in English & Hindi Speech Recognition plus Read Aloud voice synthesis.`;
   }
 
-  // 3. School overview
-  if (q.includes("holy cross") && (q.includes("about") || q.includes("overview") || q.includes("school") || q.includes("indore"))) {
-    return `**Holy Cross School, Khandwa Road, Indore**\n\n- **Motto:** "${SCHOOL_CONFIG.motto}"\n- **Principal:** ${SCHOOL_CONFIG.principal}\n- **Board & Affiliation:** ${SCHOOL_CONFIG.board}\n- **Classes:** ${SCHOOL_CONFIG.grades}\n- **Campus Address:** ${SCHOOL_CONFIG.address}\n- **Official Website:** ${SCHOOL_CONFIG.links.schoolWebsite}\n\nHoly Cross School focuses on holistic development—nurturing physical, intellectual, emotional, spiritual, and social excellence in every Holy Crossian.`;
+  if (
+    q.includes("holy cross") &&
+    (q.includes("about") || q.includes("overview") || q.includes("school") || q.includes("indore") || q.includes("motto"))
+  ) {
+    return `**${SCHOOL_CONFIG.schoolFullName}**\n\n- **Motto:** "${SCHOOL_CONFIG.motto}"\n- **Principal:** ${SCHOOL_CONFIG.principal}\n- **Board:** ${SCHOOL_CONFIG.board}\n- **Classes:** ${SCHOOL_CONFIG.grades}\n- **Address:** ${SCHOOL_CONFIG.address}\n- **Official Website:** ${SCHOOL_CONFIG.links.schoolWebsite}\n\nHoly Cross School nurtures holistic excellence—balancing strong CBSE academics with moral values, science innovation, fine arts, and athletics.`;
   }
 
-  // 4. Match any of the 45+ Faculty & Staff members directly!
   const matchedFaculty = FACULTY_DATA.find((f) => {
     const cleanName = f.name
       .toLowerCase()
       .replace(/ma'am|mam|sir|sr\.|sister/g, "")
       .trim();
-    const firstToken = cleanName.split(" ")[0];
+    const firstToken = cleanName.split(" ")[0] || "";
     return (
       q.includes(f.name.toLowerCase()) ||
       (cleanName.length >= 3 && q.includes(cleanName)) ||
@@ -831,16 +930,16 @@ function getOfflineBackupAnswer(question: string, language: LanguageCode, user: 
   });
 
   if (matchedFaculty) {
-    return `**${matchedFaculty.name} — ${matchedFaculty.role}**\n\n- **Department:** ${matchedFaculty.category} (${matchedFaculty.wing})\n- **Core Focus:** ${matchedFaculty.experienceFocus}\n- **Key Specialties:** ${matchedFaculty.specialties.join(", ")}\n\n${matchedFaculty.description}`;
+    return `**${matchedFaculty.name} — ${matchedFaculty.role}**\n\n- **Department:** ${matchedFaculty.category} (${matchedFaculty.wing})\n- **Core Focus:** ${matchedFaculty.experienceFocus}\n- **Specialties:** ${matchedFaculty.specialties.join(", ")}\n\n${matchedFaculty.description}`;
   }
 
   return "";
 }
 
 // ============================================================================
-// SECTION 6: RICH MARKDOWN FORMATTER (ZERO RAW ** OR ### SYMBOLS)
+// SECTION 6: RICH TEXT RENDERER (CRISP BOLD & HEADINGS, ZERO RAW ** OR ###)
 // ============================================================================
-function renderInlineBold(text: string): React.ReactNode {
+function renderInlineBold(text: string): ReactNode {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
   return parts.map((part, idx) => {
     if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
@@ -850,7 +949,7 @@ function renderInlineBold(text: string): React.ReactNode {
         </strong>
       );
     }
-    return <React.Fragment key={idx}>{part.replace(/\*/g, "")}</React.Fragment>;
+    return <Fragment key={idx}>{part.replace(/\*/g, "")}</Fragment>;
   });
 }
 
@@ -865,7 +964,6 @@ function FormattedAnswer({ text, fontSize }: { text: string; fontSize: number })
           return <div key={index} style={{ height: "4px" }} />;
         }
 
-        // Heading lines (###, ##, #)
         if (/^#{1,4}\s+/.test(line)) {
           const cleanHeading = line.replace(/^#{1,4}\s+/, "");
           return (
@@ -876,7 +974,6 @@ function FormattedAnswer({ text, fontSize }: { text: string; fontSize: number })
                 fontWeight: 900,
                 color: "#fbbf24",
                 marginTop: index > 0 ? "6px" : "0px",
-                letterSpacing: "0.2px",
               }}
             >
               {renderInlineBold(cleanHeading)}
@@ -884,7 +981,6 @@ function FormattedAnswer({ text, fontSize }: { text: string; fontSize: number })
           );
         }
 
-        // Bullet points (- or * or •)
         if (/^[-*•]\s+/.test(line)) {
           const content = line.replace(/^[-*•]\s+/, "");
           return (
@@ -895,7 +991,6 @@ function FormattedAnswer({ text, fontSize }: { text: string; fontSize: number })
           );
         }
 
-        // Numbered list (1., 2., ...)
         const numMatch = line.match(/^(\d+\.)\s+(.*)$/);
         if (numMatch) {
           return (
@@ -906,7 +1001,6 @@ function FormattedAnswer({ text, fontSize }: { text: string; fontSize: number })
           );
         }
 
-        // Normal paragraph
         return (
           <p key={index} style={{ margin: 0, color: "#f1f5f9" }}>
             {renderInlineBold(line)}
@@ -918,7 +1012,7 @@ function FormattedAnswer({ text, fontSize }: { text: string; fontSize: number })
 }
 
 // ============================================================================
-// SECTION 7: DESKTOP-GRADE STYLESHEET & 60FPS ANIMATIONS
+// SECTION 7: EXECUTIVE DESKTOP & 60FPS ANIMATION STYLESHEET
 // ============================================================================
 const PORTAL_STYLES = `
   @keyframes hcFloat {
@@ -934,15 +1028,15 @@ const PORTAL_STYLES = `
     to { transform: rotate(0deg); }
   }
   @keyframes hcPulseCore {
-    0%, 100% { transform: scale(1); box-shadow: 0 0 28px rgba(251,191,36,0.55), 0 0 52px rgba(56,189,248,0.35); }
-    50% { transform: scale(1.09); box-shadow: 0 0 48px rgba(251,191,36,0.92), 0 0 80px rgba(56,189,248,0.62); }
+    0%, 100% { transform: scale(1); box-shadow: 0 0 28px rgba(251,191,36,0.55), 0 0 54px rgba(56,189,248,0.35); }
+    50% { transform: scale(1.09); box-shadow: 0 0 48px rgba(251,191,36,0.92), 0 0 82px rgba(56,189,248,0.65); }
   }
   @keyframes hcAuroraDrift {
     0%, 100% { transform: translate(0px, 0px); }
     50% { transform: translate(20px, -9px); }
   }
   @keyframes hcMicPulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.75); }
     50% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
   }
   @keyframes hcShimmer {
@@ -983,21 +1077,21 @@ const PORTAL_STYLES = `
   }
 
   .hc-glass-panel {
-    background: rgba(9, 17, 35, 0.82);
+    background: rgba(9, 17, 35, 0.84);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(56, 189, 248, 0.24);
-    box-shadow: 0 16px 46px rgba(0, 0, 0, 0.48);
+    border: 1px solid rgba(56, 189, 248, 0.26);
+    box-shadow: 0 16px 46px rgba(0, 0, 0, 0.5);
   }
 
   .hc-hover-card {
-    background: rgba(15, 23, 42, 0.86);
+    background: rgba(15, 23, 42, 0.88);
     border: 1px solid rgba(148, 163, 184, 0.22);
     transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   }
   .hc-hover-card:hover {
     transform: translateY(-2px);
-    border-color: rgba(251, 191, 36, 0.58);
+    border-color: rgba(251, 191, 36, 0.6);
     box-shadow: 0 12px 28px rgba(251, 191, 36, 0.14);
   }
 
@@ -1020,11 +1114,11 @@ const PORTAL_STYLES = `
     gap: 12px;
     padding: 10px 18px;
     border-radius: 999px;
-    background: rgba(6, 12, 28, 0.92);
+    background: rgba(6, 12, 28, 0.93);
     backdrop-filter: blur(22px);
     -webkit-backdrop-filter: blur(22px);
-    border: 1px solid rgba(251, 191, 36, 0.4);
-    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.72), 0 0 26px rgba(56, 189, 248, 0.18);
+    border: 1px solid rgba(251, 191, 36, 0.42);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.72), 0 0 26px rgba(56, 189, 248, 0.2);
     max-width: calc(100vw - 24px);
     overflow-x: auto;
   }
@@ -1037,7 +1131,7 @@ const PORTAL_STYLES = `
     width: 56px;
     height: 56px;
     border-radius: 50%;
-    border: 1.5px solid rgba(251, 191, 36, 0.7);
+    border: 1.5px solid rgba(251, 191, 36, 0.72);
     background: linear-gradient(135deg, #fbbf24, #d97706);
     color: #020617;
     font-weight: 900;
@@ -1092,7 +1186,7 @@ function HolyCrossCrestLogo({ size = 48 }: { size?: number }) {
         borderRadius: `${outerR}px`,
         background: "linear-gradient(135deg, #fde68a 0%, #fbbf24 45%, #b45309 100%)",
         padding: "2px",
-        boxShadow: "0 0 24px rgba(251, 191, 36, 0.45)",
+        boxShadow: "0 0 24px rgba(251, 191, 36, 0.48)",
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
@@ -1166,14 +1260,14 @@ function MorphOrbStage({
   const [inputValue, setInputValue] = useState("");
   const [questionAsked, setQuestionAsked] = useState("");
   const [answerText, setAnswerText] = useState("");
-  const [thinkingStep, setThinkingStep] = useState("Analyzing your question...");
+  const [thinkingStep, setThinkingStep] = useState("Finding solution...");
   const [shake, setShake] = useState(false);
 
   const runQuery = async (text: string) => {
     const clean = text.trim();
     if (!clean) {
       setShake(true);
-      setTimeout(() => setShake(false), 300);
+      window.setTimeout(() => setShake(false), 300);
       return;
     }
 
@@ -1184,10 +1278,10 @@ function MorphOrbStage({
     setThinkingStep(
       language === "hi"
         ? "प्रश्न समझा जा रहा है और उत्तर तैयार किया जा रहा है..."
-        : "Finding solution & preparing answer..."
+        : "Finding solution & preparing structured answer..."
     );
 
-    const stepTimer = setTimeout(() => {
+    const stepTimer = window.setTimeout(() => {
       setThinkingStep(
         language === "hi"
           ? "होली क्रॉस स्कूल एआई उत्तर को अंतिम रूप दे रहा है..."
@@ -1196,10 +1290,10 @@ function MorphOrbStage({
     }, 1100);
 
     const { reply } = await onAsk(clean);
-    clearTimeout(stepTimer);
+    window.clearTimeout(stepTimer);
 
     setPhase("resolve");
-    setTimeout(() => {
+    window.setTimeout(() => {
       setAnswerText(reply);
       setPhase("answered");
     }, 380);
@@ -1207,12 +1301,12 @@ function MorphOrbStage({
 
   useEffect(() => {
     if (externalPrompt) {
-      runQuery(externalPrompt);
+      void runQuery(externalPrompt);
       onClearExternal();
     }
   }, [externalPrompt]);
 
-  const phaseVars: Record<OrbPhase, CSSVarsStyle> = {
+  const phaseVars: Record<OrbPhase, Record<string, string | number>> = {
     idle: {
       "--w": "680px",
       "--h": "66px",
@@ -1284,7 +1378,7 @@ function MorphOrbStage({
     },
     answered: {
       "--w": "780px",
-      "--h": "365px",
+      "--h": "370px",
       "--r": "26px",
       "--oGlow": 0.48,
       "--oHalo": 0.3,
@@ -1311,18 +1405,16 @@ function MorphOrbStage({
     <div
       className="mo-root"
       data-phase={phase}
-      style={{
-        ...phaseVars[phase],
-        minHeight: "480px",
+      style={makeOrbStyle(phaseVars[phase], {
+        minHeight: "485px",
         padding: "26px 16px",
-        border: "1px solid rgba(56, 189, 248, 0.28)",
+        border: "1px solid rgba(56, 189, 248, 0.3)",
         boxShadow: "0 22px 60px rgba(0, 0, 0, 0.58)",
-      }}
+      })}
     >
       <div className="mo-bg" />
       <div className="mo-halo" />
 
-      {/* LIVING FLOATING ORB EMBLEM ABOVE INPUT IN IDLE STATE */}
       {phase === "idle" && (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "26px", zIndex: 6 }}>
           <div
@@ -1367,18 +1459,17 @@ function MorphOrbStage({
               }}
             />
           </div>
-          <div style={{ fontSize: "20px", fontWeight: 900, color: "#f8fafc", textAlign: "center", letterSpacing: "0.4px" }}>
+          <div style={{ fontSize: "21px", fontWeight: 900, color: "#f8fafc", textAlign: "center", letterSpacing: "0.4px" }}>
             {language === "hi" ? "होली क्रॉस स्कूल एआई से कुछ भी पूछें" : "Ask Holy Cross School AI Anything"}
           </div>
-          <div style={{ fontSize: "12.5px", color: "#94a3b8", marginTop: "4px", textAlign: "center" }}>
+          <div style={{ fontSize: "12.5px", color: "#94a3b8", marginTop: "5px", textAlign: "center" }}>
             {language === "hi"
-              ? "स्कूल • शिक्षक विवरण • NCERT पढ़ाई • व्यक्तिगत प्रश्न • आवाज़ से पूछें"
+              ? "स्कूल • 45+ शिक्षक विवरण • NCERT पढ़ाई • व्यक्तिगत प्रश्न • आवाज़ से पूछें"
               : "School Info • All 45+ Faculty Profiles • NCERT Academics • Voice Enabled"}
           </div>
         </div>
       )}
 
-      {/* MORPHING ACTOR */}
       <div className="mo-mover">
         <div
           className={`mo-actor ${phase === "think" ? "hc-orb-float" : ""}`}
@@ -1431,13 +1522,12 @@ function MorphOrbStage({
           <div className="mo-card" style={{ transition: "opacity 0.38s ease, transform 0.38s ease" }} />
           <div className="mo-ring" />
 
-          {/* IDLE INPUT PILL WITH MIC BUTTON (ONLY MOUNTED IN IDLE PHASE) */}
           {phase === "idle" && (
             <form
               className="mo-input"
               onSubmit={(e) => {
                 e.preventDefault();
-                runQuery(inputValue);
+                void runQuery(inputValue);
               }}
             >
               <svg className="mo-spark" viewBox="0 0 24 24" fill="currentColor">
@@ -1459,7 +1549,7 @@ function MorphOrbStage({
                 onClick={() =>
                   onStartVoice((spoken) => {
                     setInputValue(spoken);
-                    runQuery(spoken);
+                    void runQuery(spoken);
                   })
                 }
                 className={`hc-btn ${isListening ? "hc-mic-live" : ""}`}
@@ -1488,7 +1578,6 @@ function MorphOrbStage({
             </form>
           )}
 
-          {/* ANSWER CARD (ONLY MOUNTED IN ANSWERED PHASE) */}
           {phase === "answered" && (
             <div className="mo-answer" style={{ display: "flex", gap: "10px" }}>
               <div
@@ -1497,7 +1586,7 @@ function MorphOrbStage({
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <span className="mo-a-dot" />
-                  <span>HOLY CROSS SCHOOL AI • {questionAsked.slice(0, 46)}</span>
+                  <span>HOLY CROSS SCHOOL AI • {questionAsked.slice(0, 44)}</span>
                 </div>
                 <div style={{ display: "flex", gap: "8px" }}>
                   <button
@@ -1543,7 +1632,6 @@ function MorphOrbStage({
         </div>
       </div>
 
-      {/* LIVE STATUS INDICATOR */}
       <div className="mo-status" style={{ transition: "opacity 0.25s ease" }}>
         {phase === "think" && (
           <div className="mo-lab">
@@ -1562,7 +1650,6 @@ function MorphOrbStage({
         )}
       </div>
 
-      {/* SMART FOLLOW-UPS & CONTROLS AFTER ANSWER */}
       {phase === "answered" && (
         <div
           style={{
@@ -1590,7 +1677,9 @@ function MorphOrbStage({
           <button
             type="button"
             className="hc-btn"
-            onClick={() => runQuery(`Explain this simply in ${language === "hi" ? "English" : "Hindi"}: ${questionAsked}`)}
+            onClick={() =>
+              void runQuery(`Explain this simply in ${language === "hi" ? "English" : "Hindi"}: ${questionAsked}`)
+            }
             style={{
               padding: "8px 15px",
               borderRadius: "999px",
@@ -1606,7 +1695,7 @@ function MorphOrbStage({
           <button
             type="button"
             className="hc-btn"
-            onClick={() => runQuery(`Give a clear real-life example for: ${questionAsked}`)}
+            onClick={() => void runQuery(`Give a clear real-life example for: ${questionAsked}`)}
             style={{
               padding: "8px 15px",
               borderRadius: "999px",
@@ -1642,7 +1731,7 @@ function MorphOrbStage({
 }
 
 // ============================================================================
-// SECTION 10: STORAGE UTILITIES
+// SECTION 10: STORAGE HELPER
 // ============================================================================
 function loadJSON<T>(key: string, fallback: T): T {
   try {
@@ -1654,11 +1743,11 @@ function loadJSON<T>(key: string, fallback: T): T {
 }
 
 // ============================================================================
-// SECTION 11: MAIN HOLY CROSS SCHOOL AI PORTAL APPLICATION
+// SECTION 11: MAIN HOLY CROSS SCHOOL AI APPLICATION
 // ============================================================================
 export default function App() {
   // ---------------- AUTH & PASSWORD STATE (NO OTP) ----------------
-  const [user, setUser] = useState<UserProfile | null>(() => loadJSON<UserProfile | null>("hcs_user_v2", null));
+  const [user, setUser] = useState<UserProfile | null>(() => loadJSON<UserProfile | null>("hcs_user_v3", null));
   const [authMode, setAuthMode] = useState<"signin" | "register">("signin");
   const [loginName, setLoginName] = useState("");
   const [loginEmail, setLoginEmail] = useState("");
@@ -1670,18 +1759,19 @@ export default function App() {
 
   // ---------------- GLOBAL PORTAL SETTINGS ----------------
   const [activeTab, setActiveTab] = useState<ActiveTab>("orb");
-  const [language, setLanguage] = useState<LanguageCode>(() =>
-    (localStorage.getItem("hcs_lang_v2") as LanguageCode) || "en"
-  );
-  const [voiceAutoSpeak, setVoiceAutoSpeak] = useState<boolean>(false);
-  const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
-  const [isListening, setIsListening] = useState<boolean>(false);
+  const [language, setLanguage] = useState<LanguageCode>(() => {
+    const saved = localStorage.getItem("hcs_lang_v3");
+    return saved === "hi" ? "hi" : "en";
+  });
+  const [voiceAutoSpeak, setVoiceAutoSpeak] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const [fontComfort, setFontComfort] = useState<FontComfort>("normal");
   const [schoolBg, setSchoolBg] = useState<string>(
-    () => localStorage.getItem("hcs_school_bg_v2") || SCHOOL_CONFIG.defaultBgPhoto
+    () => localStorage.getItem("hcs_school_bg_v3") || SCHOOL_CONFIG.defaultBgPhoto
   );
   const [sessionCount, setSessionCount] = useState<number>(() =>
-    Number(localStorage.getItem("hcs_session_q_count") || "0")
+    Number(localStorage.getItem("hcs_session_q_count_v3") || "0")
   );
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
@@ -1689,16 +1779,7 @@ export default function App() {
   const [topicCategory, setTopicCategory] = useState<string>("Exhibition");
   const [externalOrbPrompt, setExternalOrbPrompt] = useState<string>("");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() =>
-    loadJSON<ChatMessage[]>("hcs_chat_thread_v2", [
-      {
-        id: "welcome-msg",
-        sender: "ai",
-        text: `**Welcome to Holy Cross School AI!**\n\nI am the official intelligent assistant for **${SCHOOL_CONFIG.schoolFullName}** (Motto: *"${SCHOOL_CONFIG.motto}"*, Principal: **${SCHOOL_CONFIG.principal}**).\n\n- Ask me about **any of our 45+ teachers & staff** for complete profiles.\n- Ask **NCERT Science, Maths, Economics, or Social Science** questions with step-by-step solutions.\n- Switch to **हिंदी** anytime in the top bar or tap the **🎤 Mic** button to speak your question directly.`,
-        timestamp: "Official Welcome",
-        language: "en",
-        source: "offline-backup",
-      },
-    ])
+    loadJSON<ChatMessage[]>("hcs_chat_thread_v3", [WELCOME_CHAT_MESSAGE])
   );
   const [chatInput, setChatInput] = useState<string>("");
   const [chatLoading, setChatLoading] = useState<boolean>(false);
@@ -1710,17 +1791,20 @@ export default function App() {
   const [dirCategory, setDirCategory] = useState<string>("All");
   const [selectedFaculty, setSelectedFaculty] = useState<FacultyMember | null>(null);
 
-  // ---------------- EXHIBITION & STUDY STATE ----------------
+  // ---------------- EXHIBITION QUIZ & NCERT STUDY STATE ----------------
   const [formulaSubject, setFormulaSubject] = useState<string>("All");
+  const [quizIndex, setQuizIndex] = useState<number>(0);
+  const [quizSelected, setQuizSelected] = useState<number | null>(null);
+  const [quizScore, setQuizScore] = useState<number>(0);
 
   // ---------------- HISTORY & BOOKMARKS STATE ----------------
-  const [history, setHistory] = useState<HistoryEntry[]>(() => loadJSON<HistoryEntry[]>("hcs_history_v2", []));
+  const [history, setHistory] = useState<HistoryEntry[]>(() => loadJSON<HistoryEntry[]>("hcs_history_v3", []));
   const [historyFilter, setHistoryFilter] = useState<"all" | "bookmarked">("all");
   const [historySearch, setHistorySearch] = useState<string>("");
 
   // ---------------- CRICKET LIVE SCOREBOARD STATE ----------------
   const [matchState, setMatchState] = useState<CricketMatchState>(() =>
-    loadJSON<CricketMatchState>("hcs_cricket_v2", {
+    loadJSON<CricketMatchState>("hcs_cricket_v3", {
       teamA: "IND",
       teamB: "AUS",
       runs: 156,
@@ -1736,28 +1820,27 @@ export default function App() {
     })
   );
 
-  // Persist states cleanly
   useEffect(() => {
     try {
-      localStorage.setItem("hcs_lang_v2", language);
+      localStorage.setItem("hcs_lang_v3", language);
     } catch {
-      // ignore
+      // ignore storage errors
     }
   }, [language]);
 
   useEffect(() => {
     try {
-      localStorage.setItem("hcs_chat_thread_v2", JSON.stringify(chatMessages.slice(-40)));
+      localStorage.setItem("hcs_chat_thread_v3", JSON.stringify(chatMessages.slice(-40)));
     } catch {
-      // ignore
+      // ignore storage errors
     }
   }, [chatMessages]);
 
   useEffect(() => {
     try {
-      localStorage.setItem("hcs_cricket_v2", JSON.stringify(matchState));
+      localStorage.setItem("hcs_cricket_v3", JSON.stringify(matchState));
     } catch {
-      // ignore
+      // ignore storage errors
     }
   }, [matchState]);
 
@@ -1771,7 +1854,7 @@ export default function App() {
   const showToast = (text: string, type: "info" | "success" | "warn" = "info") => {
     const id = Date.now();
     setToast({ id, text, type });
-    setTimeout(() => {
+    window.setTimeout(() => {
       setToast((prev) => (prev && prev.id === id ? null : prev));
     }, 3000);
   };
@@ -1804,7 +1887,9 @@ export default function App() {
 
     const voices = window.speechSynthesis.getVoices();
     const preferredVoice = voices.find((v) =>
-      hasDevanagari || targetLang === "hi" ? v.lang.toLowerCase().includes("hi") : v.lang.toLowerCase().includes("en-in") || v.lang.toLowerCase().includes("en")
+      hasDevanagari || targetLang === "hi"
+        ? v.lang.toLowerCase().includes("hi")
+        : v.lang.toLowerCase().includes("en-in") || v.lang.toLowerCase().includes("en")
     );
     if (preferredVoice) utterance.voice = preferredVoice;
 
@@ -1818,27 +1903,17 @@ export default function App() {
   // ---------------- SPEECH RECOGNITION (MIC INPUT) ----------------
   const startVoiceInput = (onTranscript: (spokenText: string) => void) => {
     if (typeof window === "undefined") return;
-    const SpeechRec = (window as unknown as Record<string, unknown>).SpeechRecognition ||
-      (window as unknown as Record<string, unknown>).webkitSpeechRecognition;
+    const win = window as unknown as WindowWithSpeech;
+    const SpeechRec = win.SpeechRecognition || win.webkitSpeechRecognition;
 
     if (!SpeechRec) {
-      showToast("Voice Mic requires Chrome, Edge, or Android Chrome.", "warn");
+      showToast("Voice Mic works best on Chrome, Edge, or Android Chrome.", "warn");
       return;
     }
 
     try {
       stopSpeaking();
-      const recognition = new (SpeechRec as new () => {
-        lang: string;
-        interimResults: boolean;
-        maxAlternatives: number;
-        onstart: () => void;
-        onend: () => void;
-        onerror: () => void;
-        onresult: (ev: { results: { [k: number]: { [k: number]: { transcript: string } } } }) => void;
-        start: () => void;
-      })();
-
+      const recognition = new SpeechRec();
       recognition.lang = language === "hi" ? "hi-IN" : "en-IN";
       recognition.interimResults = false;
       recognition.maxAlternatives = 1;
@@ -1850,7 +1925,7 @@ export default function App() {
       recognition.onend = () => setIsListening(false);
       recognition.onerror = () => {
         setIsListening(false);
-        showToast("Could not capture audio. Please check mic permission.", "warn");
+        showToast("Could not capture audio. Please allow microphone permission.", "warn");
       };
       recognition.onresult = (event) => {
         const transcript = event.results?.[0]?.[0]?.transcript?.trim();
@@ -1867,11 +1942,13 @@ export default function App() {
   };
 
   // ---------------- COPY HELPER ----------------
-  const handleCopy = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text.replace(/\*\*/g, ""));
-      showToast("Copied to clipboard!", "success");
-    } catch {
+  const handleCopy = (text: string) => {
+    if (navigator.clipboard) {
+      void navigator.clipboard
+        .writeText(text.replace(/\*\*/g, ""))
+        .then(() => showToast("Copied to clipboard!", "success"))
+        .catch(() => showToast("Copy unavailable on this browser.", "warn"));
+    } else {
       showToast("Copy unavailable on this browser.", "warn");
     }
   };
@@ -1902,16 +1979,20 @@ export default function App() {
     setHistory((prev) => {
       const next = [entry, ...prev].slice(0, 60);
       try {
-        localStorage.setItem("hcs_history_v2", JSON.stringify(next));
+        localStorage.setItem("hcs_history_v3", JSON.stringify(next));
       } catch {
-        // ignore
+        // ignore storage errors
       }
       return next;
     });
 
     setSessionCount((prev) => {
       const next = prev + 1;
-      localStorage.setItem("hcs_session_q_count", String(next));
+      try {
+        localStorage.setItem("hcs_session_q_count_v3", String(next));
+      } catch {
+        // ignore storage errors
+      }
       return next;
     });
   };
@@ -1920,9 +2001,9 @@ export default function App() {
     setHistory((prev) => {
       const next = prev.map((item) => (item.id === id ? { ...item, bookmarked: !item.bookmarked } : item));
       try {
-        localStorage.setItem("hcs_history_v2", JSON.stringify(next));
+        localStorage.setItem("hcs_history_v3", JSON.stringify(next));
       } catch {
-        // ignore
+        // ignore storage errors
       }
       return next;
     });
@@ -1935,7 +2016,7 @@ export default function App() {
     showToast(msg.bookmarked ? "Removed from pinned items." : "Pinned answer saved!", "success");
   };
 
-  // ---------------- CORE AI REQUEST ENGINE (/api/chat + OFFLINE FAILSAFE) ----------------
+  // ---------------- CORE AI ENGINE (/api/chat + OFFLINE FAILSAFE) ----------------
   const executeAIQuery = async (
     questionText: string,
     overrideLang?: LanguageCode
@@ -1943,7 +2024,6 @@ export default function App() {
     const activeLang = overrideLang || language;
     const cleanQ = questionText.trim();
 
-    // Check if the user specifically asked for an offline-ready teacher profile or quick fallback if API fails
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -1955,10 +2035,11 @@ export default function App() {
         }),
       });
 
-      const data = await response.json();
+      const data = (await response.json()) as { reply?: string; error?: string };
       if (response.ok && data?.reply) {
         const replyText = String(data.reply)
           .replace(/Sister Liza Joseph/gi, "Sr. Liasa Joseph")
+          .replace(/Sr\.?\s*Liza Joseph/gi, "Sr. Liasa Joseph")
           .replace(/\bJARVIS\b/gi, "Holy Cross School AI");
 
         recordInteraction(cleanQ, replyText, "cloud");
@@ -1977,53 +2058,54 @@ export default function App() {
 
       const gracefulFallback =
         activeLang === "hi"
-          ? `**कनेक्शन नोटिस:** अभी सर्वर व्यस्त है या इंटरनेट धीमा है। कृपया 2 सेकंड बाद पुनः प्रयास करें—या हमारे **45+ शिक्षकों की डायरेक्टरी** और **NCERT फॉर्मूला वॉल्ट** का उपयोग करें।`
-          : `**Connection Notice:** The cloud AI server is momentarily busy or offline. Please retry in a moment—or explore our **Faculty Directory (45+ detailed bios)** and **NCERT Formula Vault**, which work 100% offline during the exhibition!`;
+          ? `**कनेक्शन नोटिस:** अभी सर्वर व्यस्त है या इंटरनेट धीमा है। कृपया 2 सेकंड बाद पुनः प्रयास करें—या हमारे **45+ शिक्षकों की डायरेक्टरी** और **NCERT फॉर्मूला वॉल्ट** का उपयोग करें, जो बिना इंटरनेट भी काम करते हैं।`
+          : `**Connection Notice:** The cloud AI server is momentarily busy or offline. Please retry in a moment—or explore our **Faculty Directory (45+ detailed bios)**, **Interactive Exhibition Quiz**, and **NCERT Formula Vault**, which work 100% offline!`;
       return { reply: gracefulFallback, source: "offline-backup" };
     }
   };
 
-  // ---------------- FULL CHAT TAB SUBMISSION ----------------
+  // ---------------- FULL CHAT SUBMISSION ----------------
   const handleSendChat = async (customText?: string, overrideLang?: LanguageCode) => {
     const textToSend = (customText ?? chatInput).trim();
     if (!textToSend || chatLoading) return;
 
     stopSpeaking();
+    const activeLang = overrideLang || language;
     const stamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const userMsg: ChatMessage = {
       id: `u-${Date.now()}`,
       sender: "user",
       text: textToSend,
       timestamp: stamp,
-      language: overrideLang || language,
+      language: activeLang,
     };
 
     setChatMessages((prev) => [...prev, userMsg]);
     if (!customText) setChatInput("");
     setChatLoading(true);
     setChatThinkingStage(
-      (overrideLang || language) === "hi"
+      activeLang === "hi"
         ? "समाधान खोजा जा रहा है..."
         : "Finding solution & structuring explanation..."
     );
 
-    const t1 = setTimeout(() => {
+    const t1 = window.setTimeout(() => {
       setChatThinkingStage(
-        (overrideLang || language) === "hi"
+        activeLang === "hi"
           ? "होली क्रॉस स्कूल एआई सटीक उत्तर लिख रहा है..."
           : "Thinking deeply & verifying school/academic details..."
       );
     }, 1000);
 
     const { reply, source } = await executeAIQuery(textToSend, overrideLang);
-    clearTimeout(t1);
+    window.clearTimeout(t1);
 
     const aiMsg: ChatMessage = {
       id: `a-${Date.now()}`,
       sender: "ai",
       text: reply,
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      language: overrideLang || language,
+      language: activeLang,
       questionRef: textToSend,
       bookmarked: false,
       source,
@@ -2033,7 +2115,6 @@ export default function App() {
     setChatLoading(false);
   };
 
-  // Sync Orb question into Chat Feed too so users never lose answers when switching tabs
   const handleOrbAsk = async (q: string) => {
     const result = await executeAIQuery(q);
     const stamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -2054,8 +2135,8 @@ export default function App() {
     return result;
   };
 
-  // ---------------- PASSWORD LOGIN & REGISTRATION (LOCAL, ZERO OTP) ----------------
-  const handleAuthSubmit = (e: React.FormEvent) => {
+  // ---------------- PASSWORD LOGIN & REGISTRATION ----------------
+  const handleAuthSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const cleanEmail = loginEmail.trim().toLowerCase();
     const cleanPass = loginPassword.trim();
@@ -2070,7 +2151,7 @@ export default function App() {
       return;
     }
 
-    const accounts = loadJSON<StoredAccount[]>("hcs_accounts_v2", []);
+    const accounts = loadJSON<StoredAccount[]>("hcs_accounts_v3", []);
     const existing = accounts.find((a) => a.email === cleanEmail);
 
     if (authMode === "register") {
@@ -2092,7 +2173,7 @@ export default function App() {
               createdAt: new Date().toLocaleDateString(),
             },
           ];
-      localStorage.setItem("hcs_accounts_v2", JSON.stringify(updatedAccounts));
+      localStorage.setItem("hcs_accounts_v3", JSON.stringify(updatedAccounts));
       const profile: UserProfile = {
         name: cleanName,
         email: cleanEmail,
@@ -2100,16 +2181,15 @@ export default function App() {
         joinedAt: new Date().toLocaleDateString(),
       };
       setUser(profile);
-      localStorage.setItem("hcs_user_v2", JSON.stringify(profile));
+      localStorage.setItem("hcs_user_v3", JSON.stringify(profile));
       setLoginError("");
       showToast(`Welcome to Holy Cross School AI, ${cleanName}!`, "success");
       return;
     }
 
-    // Sign-in mode: verify saved password if account exists; otherwise seamlessly register & sign in for demo smoothness
     if (existing) {
       if (existing.password !== cleanPass) {
-        setLoginError("Incorrect password for this email. Please try again or use Guest Access.");
+        setLoginError("Incorrect password for this email. Please try again or use the 1-Click Visitor Pass.");
         return;
       }
       const profile: UserProfile = {
@@ -2119,12 +2199,12 @@ export default function App() {
         joinedAt: existing.createdAt,
       };
       setUser(profile);
-      localStorage.setItem("hcs_user_v2", JSON.stringify(profile));
+      localStorage.setItem("hcs_user_v3", JSON.stringify(profile));
       setLoginError("");
       showToast(`Welcome back, ${existing.name}!`, "success");
     } else {
-      const displayName = cleanName || cleanEmail.split("@")[0].replace(/[._-]/g, " ");
-      const capitalized = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+      const baseName = cleanName || cleanEmail.split("@")[0].replace(/[._-]/g, " ");
+      const capitalized = baseName.charAt(0).toUpperCase() + baseName.slice(1);
       const newAcc: StoredAccount = {
         name: capitalized,
         email: cleanEmail,
@@ -2132,7 +2212,7 @@ export default function App() {
         role: loginRole,
         createdAt: new Date().toLocaleDateString(),
       };
-      localStorage.setItem("hcs_accounts_v2", JSON.stringify([...accounts, newAcc]));
+      localStorage.setItem("hcs_accounts_v3", JSON.stringify([...accounts, newAcc]));
       const profile: UserProfile = {
         name: capitalized,
         email: cleanEmail,
@@ -2140,7 +2220,7 @@ export default function App() {
         joinedAt: newAcc.createdAt,
       };
       setUser(profile);
-      localStorage.setItem("hcs_user_v2", JSON.stringify(profile));
+      localStorage.setItem("hcs_user_v3", JSON.stringify(profile));
       setLoginError("");
       showToast(`Signed in as ${capitalized}!`, "success");
     }
@@ -2155,20 +2235,19 @@ export default function App() {
       isGuest: true,
     };
     setUser(guest);
-    localStorage.setItem("hcs_user_v2", JSON.stringify(guest));
+    localStorage.setItem("hcs_user_v3", JSON.stringify(guest));
     showToast("Welcome to the Holy Cross School AI Exhibition Portal!", "success");
   };
 
   const handleLogout = () => {
     stopSpeaking();
-    localStorage.removeItem("hcs_user_v2");
+    localStorage.removeItem("hcs_user_v3");
     setUser(null);
     setLoginPassword("");
     setLoginError("");
   };
 
-  // ---------------- CUSTOM SCHOOL BACKGROUND UPLOADER ----------------
-  const handleBgUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBgUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -2176,9 +2255,9 @@ export default function App() {
       const result = String(reader.result || "");
       setSchoolBg(result);
       try {
-        localStorage.setItem("hcs_school_bg_v2", result);
+        localStorage.setItem("hcs_school_bg_v3", result);
       } catch {
-        // Large images apply for the current session
+        // Large images stay active for current session
       }
       showToast("School background photo updated!", "success");
     };
@@ -2208,6 +2287,31 @@ export default function App() {
         timeline: prev.timeline.slice(0, -1),
       };
     });
+  };
+
+  // ---------------- QUIZ HANDLERS ----------------
+  const currentQuiz = EXHIBITION_QUIZ[quizIndex] || EXHIBITION_QUIZ[0];
+  const handleSelectQuizOption = (idx: number) => {
+    if (quizSelected !== null) return;
+    setQuizSelected(idx);
+    if (idx === currentQuiz.correctIndex) {
+      setQuizScore((prev) => prev + 1);
+      showToast("Correct Answer! 🎉", "success");
+    } else {
+      showToast("Nice try! See the explanation below.", "info");
+    }
+  };
+
+  const handleNextQuiz = () => {
+    if (quizIndex + 1 < EXHIBITION_QUIZ.length) {
+      setQuizIndex((prev) => prev + 1);
+      setQuizSelected(null);
+    } else {
+      setQuizIndex(0);
+      setQuizSelected(null);
+      setQuizScore(0);
+      showToast("Quiz restarted!", "info");
+    }
   };
 
   // ---------------- DERIVED COMPUTATIONS ----------------
@@ -2253,13 +2357,14 @@ export default function App() {
   }, [history, historyFilter, historySearch]);
 
   const bookmarkedCount = useMemo(() => history.filter((h) => h.bookmarked).length, [history]);
+  const activePromptList = RECOMMENDED_PROMPTS[topicCategory]?.[language] || RECOMMENDED_PROMPTS.Exhibition.en;
 
-  const bgImageStyle: React.CSSProperties = {
-    backgroundImage: `linear-gradient(180deg, rgba(2, 6, 23, 0.78) 0%, rgba(2, 6, 23, 0.93) 100%), url(${schoolBg})`,
+  const bgImageStyle: CSSProperties = {
+    backgroundImage: `linear-gradient(180deg, rgba(2, 6, 23, 0.78) 0%, rgba(2, 6, 23, 0.94) 100%), url(${schoolBg})`,
   };
 
   // ==========================================================================
-  // RENDER 1: OFFICIAL ENTRY & PASSWORD LOGIN PORTAL (WITH VIDEO/PHOTO BACKDROP)
+  // RENDER 1: OFFICIAL ENTRY & PASSWORD LOGIN PORTAL
   // ==========================================================================
   if (!user) {
     return (
@@ -2276,7 +2381,6 @@ export default function App() {
       >
         <style>{PORTAL_STYLES}</style>
 
-        {/* OPTIONAL ENTRY SCREEN VIDEO BACKDROP (FALLS BACK CLEANLY TO SCHOOL PHOTO) */}
         {!videoFailed && (
           <video
             autoPlay
@@ -2305,7 +2409,7 @@ export default function App() {
             position: "relative",
             zIndex: 2,
             width: "100%",
-            maxWidth: "940px",
+            maxWidth: "960px",
             borderRadius: "30px",
             padding: "34px",
             display: "grid",
@@ -2314,10 +2418,10 @@ export default function App() {
             alignItems: "center",
           }}
         >
-          {/* LEFT EXECUTIVE BRANDING PANEL */}
+          {/* LEFT EXECUTIVE BRANDING */}
           <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-              <HolyCrossCrestLogo size={72} />
+              <HolyCrossCrestLogo size={74} />
               <div>
                 <div
                   style={{
@@ -2333,7 +2437,7 @@ export default function App() {
                 <h1
                   style={{
                     margin: "4px 0 0",
-                    fontSize: "26px",
+                    fontSize: "27px",
                     fontWeight: 900,
                     lineHeight: 1.15,
                     background: "linear-gradient(135deg, #fef08a, #fbbf24, #38bdf8)",
@@ -2348,8 +2452,8 @@ export default function App() {
 
             <div
               style={{
-                background: "rgba(15, 23, 42, 0.72)",
-                border: "1px solid rgba(251, 191, 36, 0.26)",
+                background: "rgba(15, 23, 42, 0.75)",
+                border: "1px solid rgba(251, 191, 36, 0.3)",
                 borderRadius: "18px",
                 padding: "18px",
                 display: "flex",
@@ -2357,10 +2461,10 @@ export default function App() {
                 gap: "8px",
               }}
             >
-              <div style={{ fontSize: "14px", fontWeight: 800, color: "#fbbf24" }}>
+              <div style={{ fontSize: "14.5px", fontWeight: 800, color: "#fbbf24" }}>
                 {SCHOOL_CONFIG.schoolFullName}
               </div>
-              <div style={{ fontSize: "12.5px", color: "#cbd5e1", lineHeight: 1.5 }}>
+              <div style={{ fontSize: "13px", color: "#cbd5e1", lineHeight: 1.55 }}>
                 <strong>Motto:</strong> "{SCHOOL_CONFIG.motto}" • <strong>Principal:</strong> {SCHOOL_CONFIG.principal}
               </div>
               <div style={{ fontSize: "12px", color: "#94a3b8" }}>{SCHOOL_CONFIG.board}</div>
@@ -2371,13 +2475,13 @@ export default function App() {
                 { title: "Dual AI Modes", desc: "60FPS MorphOrb + Full Chat" },
                 { title: "Voice & Hindi", desc: "Mic Input + Read Aloud" },
                 { title: "45+ Faculty Bios", desc: "Complete School Directory" },
-                { title: "NCERT & Cricket", desc: "Formulas + Live Scoreboard" },
+                { title: "NCERT & Quiz Hub", desc: "Formulas + Live Scoreboard" },
               ].map((feat) => (
                 <div
                   key={feat.title}
                   style={{
-                    background: "rgba(2, 6, 23, 0.68)",
-                    border: "1px solid rgba(56, 189, 248, 0.2)",
+                    background: "rgba(2, 6, 23, 0.7)",
+                    border: "1px solid rgba(56, 189, 248, 0.22)",
                     borderRadius: "14px",
                     padding: "12px",
                   }}
@@ -2397,19 +2501,18 @@ export default function App() {
           {/* RIGHT PASSWORD LOGIN CARD */}
           <div
             style={{
-              background: "rgba(2, 6, 23, 0.78)",
-              border: "1px solid rgba(56, 189, 248, 0.28)",
+              background: "rgba(2, 6, 23, 0.8)",
+              border: "1px solid rgba(56, 189, 248, 0.3)",
               borderRadius: "24px",
               padding: "26px 24px",
             }}
           >
-            {/* MODE SWITCHER */}
             <div
               style={{
                 display: "grid",
                 gridTemplateColumns: "1fr 1fr",
                 gap: "8px",
-                background: "rgba(15, 23, 42, 0.9)",
+                background: "rgba(15, 23, 42, 0.92)",
                 padding: "5px",
                 borderRadius: "14px",
                 marginBottom: "20px",
@@ -2470,7 +2573,7 @@ export default function App() {
                     padding: "12px 14px",
                     borderRadius: "12px",
                     border: "1px solid rgba(56, 189, 248, 0.35)",
-                    background: "rgba(15, 23, 42, 0.9)",
+                    background: "rgba(15, 23, 42, 0.92)",
                     color: "#f8fafc",
                     fontSize: "14px",
                     outline: "none",
@@ -2492,7 +2595,7 @@ export default function App() {
                     padding: "12px 14px",
                     borderRadius: "12px",
                     border: "1px solid rgba(56, 189, 248, 0.35)",
-                    background: "rgba(15, 23, 42, 0.9)",
+                    background: "rgba(15, 23, 42, 0.92)",
                     color: "#f8fafc",
                     fontSize: "14px",
                     outline: "none",
@@ -2515,7 +2618,7 @@ export default function App() {
                       padding: "12px 62px 12px 14px",
                       borderRadius: "12px",
                       border: "1px solid rgba(56, 189, 248, 0.35)",
-                      background: "rgba(15, 23, 42, 0.9)",
+                      background: "rgba(15, 23, 42, 0.92)",
                       color: "#f8fafc",
                       fontSize: "14px",
                       outline: "none",
@@ -2607,8 +2710,8 @@ export default function App() {
                 style={{
                   padding: "12px",
                   borderRadius: "14px",
-                  border: "1px solid rgba(251, 191, 36, 0.45)",
-                  background: "rgba(251, 191, 36, 0.12)",
+                  border: "1px solid rgba(251, 191, 36, 0.48)",
+                  background: "rgba(251, 191, 36, 0.14)",
                   color: "#fde68a",
                   fontWeight: 800,
                   fontSize: "13px",
@@ -2630,7 +2733,6 @@ export default function App() {
     <div className="hc-desktop-shell" style={bgImageStyle}>
       <style>{PORTAL_STYLES}</style>
 
-      {/* TOAST NOTIFICATION */}
       {toast && (
         <div
           className="hc-fade-up"
@@ -2697,14 +2799,12 @@ export default function App() {
           </div>
         </div>
 
-        {/* GENEROUSLY SPACED CONTROLS */}
         <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-          {/* LANGUAGE TOGGLE (EN / हिंदी) */}
           <button
             type="button"
             className="hc-btn"
             onClick={() => {
-              const next = language === "en" ? "hi" : "en";
+              const next: LanguageCode = language === "en" ? "hi" : "en";
               setLanguage(next);
               showToast(next === "hi" ? "भाषा हिंदी में बदल गई है" : "Switched to English Mode", "info");
             }}
@@ -2721,7 +2821,6 @@ export default function App() {
             {language === "en" ? "🌐 EN → हिंदी" : "🌐 हिंदी → EN"}
           </button>
 
-          {/* AUTO-SPEAK VOICE TOGGLE */}
           <button
             type="button"
             className="hc-btn"
@@ -2744,7 +2843,6 @@ export default function App() {
             {voiceAutoSpeak ? "🔊 Auto-Voice: ON" : "🔇 Auto-Voice: OFF"}
           </button>
 
-          {/* STOP SPEAKING QUICK BUTTON */}
           {isSpeaking && (
             <button
               type="button"
@@ -2764,12 +2862,10 @@ export default function App() {
             </button>
           )}
 
-          {/* FONT COMFORT TOGGLE */}
           <button
             type="button"
             className="hc-btn"
             onClick={() => setFontComfort(fontComfort === "normal" ? "large" : "normal")}
-            title="Toggle larger text for exhibition readability"
             style={{
               background: "rgba(148, 163, 184, 0.14)",
               color: "#e2e8f0",
@@ -2783,7 +2879,6 @@ export default function App() {
             {fontComfort === "normal" ? "Text: A" : "Text: A+"}
           </button>
 
-          {/* SCHOOL BG UPLOAD */}
           <label
             className="hc-btn"
             style={{
@@ -2800,7 +2895,6 @@ export default function App() {
             <input type="file" accept="image/*" onChange={handleBgUpload} style={{ display: "none" }} />
           </label>
 
-          {/* LOGOUT */}
           <button
             type="button"
             className="hc-btn"
@@ -2820,14 +2914,13 @@ export default function App() {
         </div>
       </header>
 
-      {/* MAIN DESKTOP WORKSPACE CONTAINER */}
+      {/* MAIN PORTAL WORKSPACE */}
       <main style={{ maxWidth: "1300px", width: "100%", margin: "0 auto", padding: "24px 18px", flex: 1 }}>
         {/* ================================================================== */}
         {/* TAB 1: MORPHING ORB AI STAGE                                       */}
         {/* ================================================================== */}
         {activeTab === "orb" && (
           <div className="hc-desktop-grid hc-fade-up">
-            {/* LEFT SIDEBAR: RECOMMENDED PROMPTS & OFFICIAL LINKS */}
             <aside style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
               <div className="hc-glass-panel" style={{ borderRadius: "24px", padding: "20px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
@@ -2860,7 +2953,7 @@ export default function App() {
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                  {RECOMMENDED_PROMPTS[topicCategory][language].map((prompt) => (
+                  {activePromptList.map((prompt) => (
                     <button
                       key={prompt}
                       type="button"
@@ -2918,7 +3011,6 @@ export default function App() {
               </div>
             </aside>
 
-            {/* RIGHT MAIN STAGE: LIVING 60FPS MORPH ORB */}
             <section style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
               <MorphOrbStage
                 language={language}
@@ -2934,7 +3026,6 @@ export default function App() {
                 onClearExternal={() => setExternalOrbPrompt("")}
               />
 
-              {/* EXHIBITION LIVE STATUS BAR */}
               <div
                 className="hc-glass-panel"
                 style={{
@@ -2947,7 +3038,7 @@ export default function App() {
                   gap: "14px",
                 }}
               >
-                <div style={{ display: "flex", gap: "22px", flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: "24px", flexWrap: "wrap" }}>
                   <div>
                     <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>
                       Questions Answered
@@ -2956,7 +3047,7 @@ export default function App() {
                   </div>
                   <div>
                     <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>
-                      Faculty Profiles Loaded
+                      Faculty Profiles
                     </div>
                     <div style={{ fontSize: "20px", fontWeight: 900, color: "#38bdf8" }}>{FACULTY_DATA.length}</div>
                   </div>
@@ -2984,7 +3075,7 @@ export default function App() {
                     fontWeight: 800,
                   }}
                 >
-                  Switch to Full Chat View →
+                  Switch to Full Chat Feed →
                 </button>
               </div>
             </section>
@@ -2992,17 +3083,16 @@ export default function App() {
         )}
 
         {/* ================================================================== */}
-        {/* TAB 2: FULL CHAT FEED (CLEAN BOLD FORMATTING + SMART FOLLOW-UPS)   */}
+        {/* TAB 2: FULL CHAT FEED (BOLD FORMATTING + SMART FOLLOW-UPS)         */}
         {/* ================================================================== */}
         {activeTab === "chat" && (
           <div className="hc-desktop-grid hc-fade-up">
-            {/* LEFT COMPACT PROMPT PANEL */}
             <aside className="hc-glass-panel" style={{ borderRadius: "24px", padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <HolyCrossCrestLogo size={38} />
                 <div>
                   <div style={{ fontSize: "14px", fontWeight: 900, color: "#fbbf24" }}>Full Chat Assistant</div>
-                  <div style={{ fontSize: "11.5px", color: "#94a3b8" }}>Bold, structured full answers</div>
+                  <div style={{ fontSize: "11.5px", color: "#94a3b8" }}>Clean bold & structured replies</div>
                 </div>
               </div>
 
@@ -3029,12 +3119,12 @@ export default function App() {
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "9px" }}>
-                {RECOMMENDED_PROMPTS[topicCategory][language].map((q) => (
+                {activePromptList.map((q) => (
                   <button
                     key={q}
                     type="button"
                     className="hc-btn"
-                    onClick={() => handleSendChat(q)}
+                    onClick={() => void handleSendChat(q)}
                     style={{
                       textAlign: "left",
                       background: "rgba(15, 23, 42, 0.85)",
@@ -3055,7 +3145,7 @@ export default function App() {
                 type="button"
                 className="hc-btn"
                 onClick={() => {
-                  setChatMessages([chatMessages[0]]);
+                  setChatMessages([WELCOME_CHAT_MESSAGE]);
                   showToast("Started a fresh chat thread.", "info");
                 }}
                 style={{
@@ -3073,7 +3163,6 @@ export default function App() {
               </button>
             </aside>
 
-            {/* RIGHT FULL CHAT THREAD PANEL */}
             <section
               className="hc-glass-panel"
               style={{
@@ -3085,7 +3174,6 @@ export default function App() {
                 overflow: "hidden",
               }}
             >
-              {/* CHAT HEADER */}
               <div
                 style={{
                   padding: "16px 22px",
@@ -3107,7 +3195,6 @@ export default function App() {
                 </span>
               </div>
 
-              {/* SCROLLABLE MESSAGES */}
               <div style={{ flex: 1, overflowY: "auto", padding: "22px", display: "flex", flexDirection: "column", gap: "20px" }}>
                 {chatMessages.map((msg) => (
                   <div
@@ -3128,10 +3215,7 @@ export default function App() {
                           msg.sender === "user"
                             ? "linear-gradient(135deg, #2563eb, #0284c7)"
                             : "rgba(15, 23, 42, 0.94)",
-                        border:
-                          msg.sender === "user"
-                            ? "none"
-                            : "1px solid rgba(251, 191, 36, 0.28)",
+                        border: msg.sender === "user" ? "none" : "1px solid rgba(251, 191, 36, 0.28)",
                         boxShadow: "0 8px 24px rgba(0, 0, 0, 0.28)",
                       }}
                     >
@@ -3162,7 +3246,6 @@ export default function App() {
                         <FormattedAnswer text={msg.text} fontSize={fontSizePx} />
                       )}
 
-                      {/* PER-MESSAGE ACTION BAR & SMART FOLLOW-UPS FOR AI REPLIES */}
                       {msg.sender === "ai" && (
                         <div style={{ marginTop: "14px", paddingTop: "10px", borderTop: "1px solid rgba(148, 163, 184, 0.15)" }}>
                           <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: msg.questionRef ? "10px" : "0px" }}>
@@ -3216,14 +3299,13 @@ export default function App() {
                             </button>
                           </div>
 
-                          {/* SMART FOLLOW-UP CHIPS */}
                           {msg.questionRef && (
                             <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
                               <button
                                 type="button"
                                 className="hc-btn"
                                 onClick={() =>
-                                  handleSendChat(
+                                  void handleSendChat(
                                     msg.language === "hi"
                                       ? `Explain this in clear English: ${msg.questionRef}`
                                       : `इसे सरल हिंदी में समझाएं: ${msg.questionRef}`,
@@ -3245,7 +3327,7 @@ export default function App() {
                               <button
                                 type="button"
                                 className="hc-btn"
-                                onClick={() => handleSendChat(`Explain simply in 3 short points: ${msg.questionRef}`)}
+                                onClick={() => void handleSendChat(`Explain simply in 3 short points: ${msg.questionRef}`)}
                                 style={{
                                   background: "rgba(56, 189, 248, 0.12)",
                                   color: "#7dd3fc",
@@ -3261,7 +3343,7 @@ export default function App() {
                               <button
                                 type="button"
                                 className="hc-btn"
-                                onClick={() => handleSendChat(`Give a practical real-life example for: ${msg.questionRef}`)}
+                                onClick={() => void handleSendChat(`Give a practical real-life example for: ${msg.questionRef}`)}
                                 style={{
                                   background: "rgba(52, 211, 153, 0.12)",
                                   color: "#6ee7b7",
@@ -3277,7 +3359,7 @@ export default function App() {
                               <button
                                 type="button"
                                 className="hc-btn"
-                                onClick={() => handleSendChat(`Ask me 2 quick quiz questions on: ${msg.questionRef}`)}
+                                onClick={() => void handleSendChat(`Ask me 2 quick quiz questions on: ${msg.questionRef}`)}
                                 style={{
                                   background: "rgba(168, 85, 247, 0.16)",
                                   color: "#d8b4fe",
@@ -3298,7 +3380,6 @@ export default function App() {
                   </div>
                 ))}
 
-                {/* ANIMATED THINKING / FINDING SOLUTION INDICATOR */}
                 {chatLoading && (
                   <div
                     className="hc-fade-up"
@@ -3324,11 +3405,10 @@ export default function App() {
                 <div ref={chatEndRef} />
               </div>
 
-              {/* CHAT INPUT COMPOSER WITH MIC */}
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  handleSendChat();
+                  void handleSendChat();
                 }}
                 style={{
                   padding: "14px 18px",
@@ -3345,7 +3425,7 @@ export default function App() {
                   onClick={() =>
                     startVoiceInput((spoken) => {
                       setChatInput(spoken);
-                      handleSendChat(spoken);
+                      void handleSendChat(spoken);
                     })
                   }
                   title="Voice Input (Mic)"
@@ -3406,11 +3486,10 @@ export default function App() {
         )}
 
         {/* ================================================================== */}
-        {/* TAB 3: COMPLETE SCHOOL & FACULTY DIRECTORY (FULL DETAILED BIOS)    */}
+        {/* TAB 3: COMPLETE FACULTY & STAFF DIRECTORY (45 FULL DETAILED BIOS)  */}
         {/* ================================================================== */}
         {activeTab === "faculty" && (
           <div className="hc-fade-up" style={{ display: "flex", flexDirection: "column", gap: "22px" }}>
-            {/* LEADERSHIP SPOTLIGHT */}
             <div className="hc-two-col">
               {FACULTY_DATA.filter((f) => f.featured).map((leader) => (
                 <div
@@ -3485,7 +3564,6 @@ export default function App() {
               ))}
             </div>
 
-            {/* FULL SEARCHABLE DIRECTORY */}
             <div className="hc-glass-panel" style={{ borderRadius: "24px", padding: "24px" }}>
               <div
                 style={{
@@ -3502,7 +3580,7 @@ export default function App() {
                     Complete Faculty & Office Staff Directory ({filteredFaculty.length})
                   </h2>
                   <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#94a3b8" }}>
-                    Click any educator to read their full detailed profile, listen aloud, or ask Holy Cross School AI.
+                    Click any educator to view their complete profile, listen aloud, or ask Holy Cross School AI.
                   </p>
                 </div>
                 <input
@@ -3569,11 +3647,9 @@ export default function App() {
                     }}
                   >
                     <div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
-                        <span style={{ fontSize: "10.5px", color: "#38bdf8", fontWeight: 900, textTransform: "uppercase" }}>
-                          {f.category} • {f.wing}
-                        </span>
-                      </div>
+                      <span style={{ fontSize: "10.5px", color: "#38bdf8", fontWeight: 900, textTransform: "uppercase" }}>
+                        {f.category} • {f.wing}
+                      </span>
                       <div style={{ fontSize: "17px", fontWeight: 900, color: "#fbbf24", marginTop: "6px" }}>
                         {f.name}
                       </div>
@@ -3606,7 +3682,7 @@ export default function App() {
                         className="hc-btn"
                         onClick={() => {
                           setActiveTab("chat");
-                          handleSendChat(`Give a full detailed introduction about ${f.name} (${f.role}) at Holy Cross School, Indore.`);
+                          void handleSendChat(`Give a full detailed introduction about ${f.name} (${f.role}) at Holy Cross School, Indore.`);
                         }}
                         style={{
                           flex: 1,
@@ -3627,14 +3703,13 @@ export default function App() {
               </div>
             </div>
 
-            {/* FULL TEACHER PROFILE MODAL */}
             {selectedFaculty && (
               <div
                 onClick={() => setSelectedFaculty(null)}
                 style={{
                   position: "fixed",
                   inset: 0,
-                  background: "rgba(0, 0, 0, 0.8)",
+                  background: "rgba(0, 0, 0, 0.82)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -3727,12 +3802,12 @@ export default function App() {
         )}
 
         {/* ================================================================== */}
-        {/* TAB 4: EXHIBITION SHOWCASE & NCERT ACADEMIC FORMULA VAULT          */}
+        {/* TAB 4: EXHIBITION SHOWCASE, INTERACTIVE QUIZ & NCERT FORMULAS      */}
         {/* ================================================================== */}
         {activeTab === "exhibition" && (
           <div className="hc-fade-up" style={{ display: "flex", flexDirection: "column", gap: "22px" }}>
             <div className="hc-two-col">
-              {/* OFFICIAL CAMPUS PROFILE CARD */}
+              {/* OFFICIAL CAMPUS PROFILE */}
               <div className="hc-glass-panel" style={{ borderRadius: "24px", padding: "24px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "14px" }}>
                   <HolyCrossCrestLogo size={54} />
@@ -3745,40 +3820,26 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "13.5px", color: "#cbd5e1", lineHeight: 1.6 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "9px", fontSize: "13.5px", color: "#cbd5e1", lineHeight: 1.6 }}>
                   <div><strong>Principal:</strong> {SCHOOL_CONFIG.principal}</div>
                   <div><strong>Affiliation:</strong> {SCHOOL_CONFIG.board}</div>
-                  <div><strong>Education Level:</strong> {SCHOOL_CONFIG.grades}</div>
-                  <div><strong>Campus Location:</strong> {SCHOOL_CONFIG.address}</div>
-                  <div><strong>Project Architect:</strong> {SCHOOL_CONFIG.architect}</div>
+                  <div><strong>Classes:</strong> {SCHOOL_CONFIG.grades}</div>
+                  <div><strong>Campus Address:</strong> {SCHOOL_CONFIG.address}</div>
+                  <div><strong>Student Architect:</strong> {SCHOOL_CONFIG.architect}</div>
                   <div><strong>IT Faculty Mentor:</strong> {SCHOOL_CONFIG.mentor}</div>
                 </div>
-              </div>
 
-              {/* LIVE EXHIBITION DEMO SCRIPT FOR PARENTS & JUDGES */}
-              <div className="hc-glass-panel" style={{ borderRadius: "24px", padding: "24px" }}>
-                <h2 style={{ margin: "0 0 8px", fontSize: "20px", fontWeight: 900, color: "#38bdf8" }}>
-                  Exhibition Live Demo Deck
-                </h2>
-                <p style={{ margin: "0 0 16px", fontSize: "13px", color: "#94a3b8" }}>
-                  One-tap live demonstrations built specifically for visiting parents, teachers, and judges:
-                </p>
-                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "9px", marginTop: "16px" }}>
                   {[
                     {
-                      label: "1. Official Welcome Speech (Read Aloud Ready)",
+                      label: "▶ Live Welcome Speech for Parents & Judges",
                       prompt:
                         "Deliver a warm, impressive 5-line welcome speech to parents and exhibition judges visiting the Holy Cross School AI stall at Holy Cross School, Khandwa Road, Indore.",
                     },
                     {
-                      label: "2. Explain Our AI Architecture to Judges",
+                      label: "▶ Explain Our AI Architecture to Judges",
                       prompt:
-                        "Explain clearly how Holy Cross School AI works using React, TypeScript, Vercel Serverless backend, secure API keys, and Speech Recognition.",
-                    },
-                    {
-                      label: "3. Showcase Hindi Voice & Parent Assistance",
-                      prompt:
-                        "अभिभावकों को हिंदी में समझाएं कि होली क्रॉस स्कूल एआई बच्चों की NCERT पढ़ाई और स्कूल जानकारी में कैसे मदद करता है।",
+                        "Explain clearly how Holy Cross School AI works using React, TypeScript, Vercel Serverless backend, secure API keys, and Voice Recognition.",
                     },
                   ].map((demo) => (
                     <button
@@ -3787,27 +3848,131 @@ export default function App() {
                       className="hc-btn"
                       onClick={() => {
                         setActiveTab("chat");
-                        handleSendChat(demo.prompt);
+                        void handleSendChat(demo.prompt);
                       }}
                       style={{
                         textAlign: "left",
-                        padding: "13px 16px",
-                        borderRadius: "14px",
+                        padding: "11px 14px",
+                        borderRadius: "12px",
                         border: "1px solid rgba(251, 191, 36, 0.35)",
-                        background: "rgba(15, 23, 42, 0.88)",
+                        background: "rgba(15, 23, 42, 0.9)",
                         color: "#fde68a",
                         fontWeight: 800,
-                        fontSize: "13px",
+                        fontSize: "12.5px",
                       }}
                     >
-                      ▶ {demo.label}
+                      {demo.label}
                     </button>
                   ))}
                 </div>
               </div>
+
+              {/* INTERACTIVE VISITOR EXHIBITION QUIZ (WORKS 100% OFFLINE) */}
+              <div className="hc-glass-panel" style={{ borderRadius: "24px", padding: "24px", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: "14px" }}>
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                    <h2 style={{ margin: 0, fontSize: "19px", fontWeight: 900, color: "#38bdf8" }}>
+                      Interactive Exhibition Quiz
+                    </h2>
+                    <span
+                      style={{
+                        background: "rgba(251, 191, 36, 0.16)",
+                        color: "#fbbf24",
+                        border: "1px solid rgba(251, 191, 36, 0.4)",
+                        borderRadius: "999px",
+                        padding: "4px 12px",
+                        fontSize: "12px",
+                        fontWeight: 800,
+                      }}
+                    >
+                      Score: {quizScore}/{EXHIBITION_QUIZ.length}
+                    </span>
+                  </div>
+
+                  <div style={{ fontSize: "11.5px", color: "#94a3b8", marginBottom: "8px", fontWeight: 700 }}>
+                    Question {quizIndex + 1} of {EXHIBITION_QUIZ.length}
+                  </div>
+                  <div style={{ fontSize: "15.5px", fontWeight: 800, color: "#f8fafc", lineHeight: 1.5, marginBottom: "14px" }}>
+                    {currentQuiz.question}
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "9px" }}>
+                    {currentQuiz.options.map((opt, idx) => {
+                      const isCorrect = idx === currentQuiz.correctIndex;
+                      const isPicked = quizSelected === idx;
+                      let bg = "rgba(15, 23, 42, 0.9)";
+                      let border = "1px solid rgba(148, 163, 184, 0.25)";
+                      if (quizSelected !== null) {
+                        if (isCorrect) {
+                          bg = "rgba(5, 150, 105, 0.35)";
+                          border = "1px solid #34d399";
+                        } else if (isPicked) {
+                          bg = "rgba(220, 38, 38, 0.3)";
+                          border = "1px solid #f87171";
+                        }
+                      }
+                      return (
+                        <button
+                          key={opt}
+                          type="button"
+                          className="hc-btn"
+                          onClick={() => handleSelectQuizOption(idx)}
+                          style={{
+                            textAlign: "left",
+                            padding: "11px 14px",
+                            borderRadius: "12px",
+                            background: bg,
+                            border,
+                            color: "#f8fafc",
+                            fontSize: "13px",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {String.fromCharCode(65 + idx)}. {opt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {quizSelected !== null && (
+                  <div
+                    className="hc-fade-up"
+                    style={{
+                      background: "rgba(2, 6, 23, 0.85)",
+                      border: "1px solid rgba(56, 189, 248, 0.35)",
+                      borderRadius: "14px",
+                      padding: "12px 14px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "12px",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <span style={{ fontSize: "12.5px", color: "#cbd5e1", flex: 1 }}>{currentQuiz.fact}</span>
+                    <button
+                      type="button"
+                      className="hc-btn"
+                      onClick={handleNextQuiz}
+                      style={{
+                        background: "linear-gradient(135deg, #fbbf24, #f59e0b)",
+                        color: "#020617",
+                        border: "none",
+                        borderRadius: "10px",
+                        padding: "8px 16px",
+                        fontSize: "12px",
+                        fontWeight: 900,
+                      }}
+                    >
+                      {quizIndex + 1 < EXHIBITION_QUIZ.length ? "Next Question →" : "Restart Quiz ↻"}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* NCERT FORMULA & CONCEPT VAULT */}
+            {/* NCERT FORMULA VAULT */}
             <div className="hc-glass-panel" style={{ borderRadius: "24px", padding: "24px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "14px", marginBottom: "16px" }}>
                 <div>
@@ -3815,7 +3980,7 @@ export default function App() {
                     NCERT Quick Formula & Concept Vault
                   </h2>
                   <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#94a3b8" }}>
-                    Works 100% offline. Click "Explain with AI" on any card for a step-by-step worked example!
+                    Works 100% offline. Click "Explain with AI" on any card for a worked CBSE explanation.
                   </p>
                 </div>
 
@@ -3887,7 +4052,7 @@ export default function App() {
                       className="hc-btn"
                       onClick={() => {
                         setActiveTab("chat");
-                        handleSendChat(item.askPrompt);
+                        void handleSendChat(item.askPrompt);
                       }}
                       style={{
                         padding: "9px 12px",
@@ -3913,11 +4078,10 @@ export default function App() {
         {/* ================================================================== */}
         {activeTab === "cricket" && (
           <div className="hc-desktop-grid hc-fade-up">
-            {/* LEFT: LIVE CRICKET PORTALS */}
             <aside className="hc-glass-panel" style={{ borderRadius: "24px", padding: "22px", display: "flex", flexDirection: "column", gap: "14px" }}>
               <h2 style={{ margin: 0, fontSize: "19px", fontWeight: 900, color: "#fbbf24" }}>Live Cricket Portals</h2>
               <p style={{ margin: 0, fontSize: "13px", color: "#94a3b8", lineHeight: 1.5 }}>
-                Jump straight to international, IPL, and domestic live ball-by-ball scorecards:
+                Follow live international, IPL, and domestic ball-by-ball scores directly:
               </p>
               <a
                 href={SCHOOL_CONFIG.links.cricbuzz}
@@ -3979,7 +4143,6 @@ export default function App() {
               </div>
             </aside>
 
-            {/* RIGHT: INTERACTIVE MATCH SCORING CONSOLE */}
             <section className="hc-glass-panel" style={{ borderRadius: "24px", padding: "24px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", marginBottom: "18px" }}>
                 <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 900, color: "#38bdf8" }}>
@@ -4021,7 +4184,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* LIVE SCORE BANNER */}
               <div
                 style={{
                   background: "linear-gradient(135deg, rgba(2, 6, 23, 0.94), rgba(15, 23, 42, 0.94))",
@@ -4063,7 +4225,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* BALL-BY-BALL TIMELINE */}
               <div style={{ marginBottom: "20px" }}>
                 <div style={{ fontSize: "11.5px", fontWeight: 800, color: "#94a3b8", marginBottom: "8px", textTransform: "uppercase" }}>
                   Recent Balls Timeline
@@ -4102,7 +4263,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* SCORING BUTTONS */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: "12px" }}>
                 {[
                   { label: "Dot Ball", tag: "0", r: 0, w: false, legal: true, bg: "#334155" },
@@ -4149,7 +4309,7 @@ export default function App() {
                   Conversation History & Pinned Notes ({filteredHistory.length})
                 </h2>
                 <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#94a3b8" }}>
-                  Search past exhibition Q&As, replay audio aloud, or bookmark key answers.
+                  Search past Q&As, replay audio aloud, or bookmark key answers for quick exhibition demos.
                 </p>
               </div>
 
@@ -4191,7 +4351,7 @@ export default function App() {
                     className="hc-btn"
                     onClick={() => {
                       setHistory([]);
-                      localStorage.removeItem("hcs_history_v2");
+                      localStorage.removeItem("hcs_history_v3");
                       showToast("History cleared.", "info");
                     }}
                     style={{
@@ -4212,7 +4372,7 @@ export default function App() {
 
             {filteredHistory.length === 0 ? (
               <div style={{ padding: "40px 20px", textAlign: "center", color: "#94a3b8", fontSize: "14px" }}>
-                No matching conversations found. Ask Holy Cross School AI in the Orb or Full Chat tab!
+                No matching conversations found. Ask Holy Cross School AI in the MorphOrb or Full Chat tab!
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -4297,7 +4457,7 @@ export default function App() {
             { id: "orb", label: "✦ MorphOrb AI" },
             { id: "chat", label: "💬 Full Chat" },
             { id: "faculty", label: `🏫 Faculty (${FACULTY_DATA.length})` },
-            { id: "exhibition", label: "🎓 Exhibition & Study" },
+            { id: "exhibition", label: "🎓 Exhibition & Quiz" },
             { id: "cricket", label: "🏏 Cricket Live" },
             { id: "history", label: `🕘 History (${history.length})` },
           ] as { id: ActiveTab; label: string }[]
@@ -4326,11 +4486,11 @@ export default function App() {
         ))}
       </nav>
 
-      {/* FLOATING QUICK-ASK VOICE / ORB BUTTON */}
+      {/* FLOATING QUICK-SWITCH BUTTON */}
       <button
         type="button"
         className="hc-fab-quick hc-btn"
-        title="Jump to MorphOrb AI"
+        title="Switch between MorphOrb and Full Chat"
         onClick={() => {
           setActiveTab(activeTab === "orb" ? "chat" : "orb");
           window.scrollTo({ top: 0, behavior: "smooth" });
