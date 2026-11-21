@@ -1469,9 +1469,9 @@ const PORTAL_STYLES = `
 // SECTION 8: OFFICIAL HOLY CROSS CREST SVG
 // ============================================================================
 function HolyCrossCrestLogo({ size = 48 }: { size?: number }) {
-  const outerR = Math.round(size * 0.28);
-  const innerR = Math.round(size * 0.24);
-  const svgSize = Math.round(size * 0.78);
+  const candidates = ["/logo.png", "/logo.jpg", "/logo.jpeg", "/logo.webp"];
+  const [idx, setIdx] = useState(0);
+  const outerR = Math.round(size * 0.26);
 
   return (
     <div
@@ -1479,47 +1479,39 @@ function HolyCrossCrestLogo({ size = 48 }: { size?: number }) {
         width: size + "px",
         height: size + "px",
         borderRadius: outerR + "px",
-        background: "linear-gradient(135deg, #fde68a 0%, #fbbf24 45%, #b45309 100%)",
-        padding: "2px",
-        boxShadow: "0 0 24px rgba(251, 191, 36, 0.48)",
+        background: "#ffffff",
+        padding: "3px",
+        border: "2px solid #fbbf24",
+        boxShadow: "0 0 22px rgba(251, 191, 36, 0.45)",
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
+        overflow: "hidden",
         flexShrink: 0,
       }}
-      title="Holy Cross School, Indore — Official Crest"
+      title="Holy Cross School, Indore — Official Logo"
     >
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          borderRadius: innerR + "px",
-          background: "radial-gradient(circle at 50% 25%, #1e3a8a, #020617 88%)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <svg viewBox="0 0 64 64" width={svgSize} height={svgSize} fill="none">
-          <path
-            d="M32 4L8 14V30C8 46.5 18.2 57.4 32 61C45.8 57.4 56 46.5 56 30V14L32 4Z"
-            stroke="#fbbf24"
-            strokeWidth="2.5"
-            fill="rgba(30, 58, 138, 0.48)"
-          />
-          <path d="M32 11V39M22 21H42" stroke="#fbbf24" strokeWidth="4.4" strokeLinecap="round" />
-          <path
-            d="M23 45C23 48.5 27 51 32 51C37 51 41 48.5 41 45H23Z"
-            fill="#38bdf8"
-            stroke="#fbbf24"
-            strokeWidth="1.5"
-          />
-          <path d="M32 35.5C32 35.5 28.5 39.8 30 43C31 44.5 33 44.5 34 43C35.5 39.8 32 35.5 32 35.5Z" fill="#f59e0b" />
-        </svg>
-      </div>
+      {idx < candidates.length ? (
+        <img
+          src={candidates[idx]}
+          alt="Holy Cross School Logo"
+          onError={() => setIdx((prev) => prev + 1)}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+            borderRadius: Math.max(4, outerR - 4) + "px",
+          }}
+        />
+      ) : (
+        <span style={{ fontSize: Math.round(size * 0.34) + "px", fontWeight: 900, color: "#1e3a8a" }}>
+          HCS
+        </span>
+      )}
     </div>
   );
 }
+
 
 // ============================================================================
 // SECTION 9: TAB 1 — LIVING 60FPS MORPHING ORB STAGE
