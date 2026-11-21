@@ -2,13 +2,14 @@ import { useState, useEffect, useRef, useMemo, Fragment } from "react";
 import type { CSSProperties, ReactNode, FormEvent, ChangeEvent } from "react";
 
 // ============================================================================
-// SECTION 1: STRICT TYPESCRIPT DEFINITIONS (ZERO-ERROR SAFE)
+// SECTION 1: STRICT TYPESCRIPT TYPES & SAFE HELPERS
 // ============================================================================
 type LanguageCode = "en" | "hi";
 type ActiveTab = "orb" | "chat" | "faculty" | "exhibition" | "cricket" | "history";
 type UserRole = "Student" | "Parent" | "Teacher" | "Exhibition Visitor" | "Guest";
 type OrbPhase = "idle" | "think" | "resolve" | "answered";
 type FontComfort = "normal" | "large";
+type AccentTheme = "royal" | "cyber" | "emerald";
 
 interface UserProfile {
   name: string;
@@ -125,7 +126,38 @@ interface WindowWithSpeech {
   webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
 }
 
-// Strict-TS safe helper for CSS custom properties (--w, --h, --r, etc.)
+interface ThemePalette {
+  name: string;
+  primary: string;
+  secondary: string;
+  glow: string;
+  border: string;
+}
+
+const ACCENT_THEMES: Record<AccentTheme, ThemePalette> = {
+  royal: {
+    name: "Royal Gold",
+    primary: "#fbbf24",
+    secondary: "#38bdf8",
+    glow: "rgba(251, 191, 36, 0.42)",
+    border: "rgba(251, 191, 36, 0.42)",
+  },
+  cyber: {
+    name: "Cyber Cyan",
+    primary: "#38bdf8",
+    secondary: "#818cf8",
+    glow: "rgba(56, 189, 248, 0.42)",
+    border: "rgba(56, 189, 248, 0.45)",
+  },
+  emerald: {
+    name: "Campus Emerald",
+    primary: "#34d399",
+    secondary: "#fbbf24",
+    glow: "rgba(52, 211, 153, 0.42)",
+    border: "rgba(52, 211, 153, 0.42)",
+  },
+};
+
 function makeOrbStyle(
   vars: Record<string, string | number>,
   extra: CSSProperties
@@ -133,8 +165,17 @@ function makeOrbStyle(
   return { ...vars, ...extra } as unknown as CSSProperties;
 }
 
+function loadJSON<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 // ============================================================================
-// SECTION 2: OFFICIAL SCHOOL METADATA & VERIFIED PORTAL LINKS
+// SECTION 2: OFFICIAL SCHOOL METADATA & VERIFIED LINKS
 // ============================================================================
 const SCHOOL_CONFIG = {
   brandName: "HOLY CROSS SCHOOL AI",
@@ -163,14 +204,26 @@ const SCHOOL_CONFIG = {
 const WELCOME_CHAT_MESSAGE: ChatMessage = {
   id: "welcome-official",
   sender: "ai",
-  text: `**Welcome to Holy Cross School AI!**\n\nI am the official intelligent assistant for **${SCHOOL_CONFIG.schoolFullName}** (Motto: *"${SCHOOL_CONFIG.motto}"*, Principal: **${SCHOOL_CONFIG.principal}**).\n\n- Ask me about **any of our 45+ respected teachers & office staff** for complete detailed profiles.\n- Ask **NCERT Science, Mathematics, Economics, or Social Science** questions with clear step-by-step answers.\n- Ask **personal or conversational questions** (*"How are you?"*, *"Who created you?"*) anytime.\n- Tap **🌐 EN → हिंदी** in the top bar for Hindi replies, or tap the **🎤 Mic** button to speak directly.`,
+  text:
+    "**Welcome to Holy Cross School AI!**\n\n" +
+    "I am the official intelligent assistant for **" +
+    SCHOOL_CONFIG.schoolFullName +
+    '** (Motto: "' +
+    SCHOOL_CONFIG.motto +
+    '", Principal: **' +
+    SCHOOL_CONFIG.principal +
+    "**).\n\n" +
+    "- Ask me about **any of our 45 respected teachers & office staff** for complete detailed profiles.\n" +
+    "- Ask **NCERT Science, Mathematics, Economics, or Social Science** questions with clear step-by-step solutions.\n" +
+    '- Ask **personal or conversational questions** ("How are you?", "Who created you?") anytime.\n' +
+    "- Switch to **हिंदी** in the top bar or tap the **Mic** button to speak your question directly.",
   timestamp: "Official Welcome",
   language: "en",
   source: "offline-backup",
 };
 
 // ============================================================================
-// SECTION 3: COMPLETE FACULTY & STAFF DIRECTORY (45 FULL DETAILED PROFILES)
+// SECTION 3: COMPLETE FACULTY & STAFF DIRECTORY (45 DETAILED PROFILES)
 // ============================================================================
 const FACULTY_DATA: FacultyMember[] = [
   {
@@ -183,7 +236,7 @@ const FACULTY_DATA: FacultyMember[] = [
     featured: true,
     specialties: ["School Leadership", "Value-Based Education", "Student Welfare", "Academic Excellence"],
     description:
-      "Sr. Liasa Joseph serves as the respected Principal and Spiritual Guide of Holy Cross School, Khandwa Road, Indore. Under her visionary leadership, the institution lives its timeless motto 'Live and Let Live,' balancing strong CBSE academic rigor with compassion, discipline, and character formation. She actively champions student-led exhibitions, digital innovation, sports, arts, and community values so every Holy Crossian grows intellectually, emotionally, spiritually, and socially.",
+      "Sr. Liasa Joseph serves as the respected Principal and Spiritual Guide of Holy Cross School, Khandwa Road, Indore. Under her visionary leadership, the institution lives its timeless motto 'Live and Let Live,' balancing strong CBSE academic rigor with compassion, discipline, and character formation. She actively champions student-led exhibitions, digital innovation, sports, fine arts, and community values so every Holy Crossian grows intellectually, emotionally, spiritually, and socially.",
   },
   {
     id: "priyanka_mam",
@@ -753,7 +806,7 @@ const NCERT_FORMULAS: StudyFormula[] = [
     id: "phy_newton",
     subject: "Physics",
     title: "Newton's Second Law of Motion",
-    formula: "F = m × a",
+    formula: "F = m x a",
     explanation: "Force equals mass multiplied by acceleration (SI Unit: Newton, N).",
     askPrompt: "Explain Newton's Second Law (F = ma) with 2 solved numerical examples for CBSE students.",
   },
@@ -761,7 +814,7 @@ const NCERT_FORMULAS: StudyFormula[] = [
     id: "phy_kinematics",
     subject: "Physics",
     title: "Three Equations of Motion",
-    formula: "v = u + at  |  s = ut + ½at²  |  v² - u² = 2as",
+    formula: "v = u + at  |  s = ut + 1/2 at^2  |  v^2 - u^2 = 2as",
     explanation: "Links initial velocity (u), final velocity (v), acceleration (a), time (t), and displacement (s).",
     askPrompt: "Explain the three equations of motion clearly with a simple numerical example.",
   },
@@ -769,7 +822,7 @@ const NCERT_FORMULAS: StudyFormula[] = [
     id: "phy_ohm",
     subject: "Physics",
     title: "Ohm's Law & Electric Power",
-    formula: "V = I × R   |   P = V × I = I²R",
+    formula: "V = I x R   |   P = V x I = I^2 R",
     explanation: "Potential difference across a conductor is directly proportional to current at constant temperature.",
     askPrompt: "Explain Ohm's Law and solve a sample electric circuit problem step-by-step.",
   },
@@ -777,7 +830,7 @@ const NCERT_FORMULAS: StudyFormula[] = [
     id: "chem_mole",
     subject: "Chemistry",
     title: "Mole Concept & Avogadro Constant",
-    formula: "n = Given Mass (m) / Molar Mass (M) = N / 6.022 × 10²³",
+    formula: "n = Given Mass (m) / Molar Mass (M) = N / 6.022 x 10^23",
     explanation: "Connects mass of a substance with number of moles and total particles.",
     askPrompt: "Explain the Mole Concept and Avogadro's number with a clear solved example.",
   },
@@ -793,15 +846,15 @@ const NCERT_FORMULAS: StudyFormula[] = [
     id: "math_quad",
     subject: "Mathematics",
     title: "Quadratic Formula",
-    formula: "x = [ -b ± √(b² - 4ac) ] / 2a",
-    explanation: "Finds roots of ax² + bx + c = 0; Discriminant D = b² - 4ac defines root nature.",
-    askPrompt: "Solve x² - 5x + 6 = 0 using the quadratic formula and explain the discriminant.",
+    formula: "x = [ -b +/- sqrt(b^2 - 4ac) ] / 2a",
+    explanation: "Finds roots of ax^2 + bx + c = 0; Discriminant D = b^2 - 4ac defines root nature.",
+    askPrompt: "Solve x^2 - 5x + 6 = 0 using the quadratic formula and explain the discriminant.",
   },
   {
     id: "math_heron",
     subject: "Mathematics",
     title: "Heron's Formula (Triangle Area)",
-    formula: "Area = √[ s(s - a)(s - b)(s - c) ],  where s = (a + b + c)/2",
+    formula: "Area = sqrt[ s(s - a)(s - b)(s - c) ],  where s = (a + b + c)/2",
     explanation: "Calculates the exact area of any triangle directly from its three side lengths.",
     askPrompt: "Find the area of a triangle with sides 13 cm, 14 cm, and 15 cm using Heron's Formula.",
   },
@@ -809,7 +862,7 @@ const NCERT_FORMULAS: StudyFormula[] = [
     id: "eco_tax",
     subject: "Economics",
     title: "Direct Tax vs. Indirect Tax",
-    formula: "Direct (Income Tax) → Paid Directly | Indirect (GST) → Shifted via Goods",
+    formula: "Direct (Income Tax) -> Paid Directly | Indirect (GST) -> Shifted via Goods",
     explanation: "Direct taxes are non-transferable and progressive; indirect taxes apply on consumption.",
     askPrompt: "Compare Direct Tax and Indirect Tax with Indian examples like Income Tax and GST.",
   },
@@ -817,7 +870,7 @@ const NCERT_FORMULAS: StudyFormula[] = [
     id: "eco_demand",
     subject: "Economics",
     title: "Law of Demand & Supply",
-    formula: "Price ↑ ⇒ Demand ↓ & Supply ↑   (Other Factors Constant)",
+    formula: "Price Up => Demand Down & Supply Up (Other Factors Constant)",
     explanation: "Market equilibrium occurs where quantity demanded equals quantity supplied.",
     askPrompt: "Explain the Law of Demand, Law of Supply, and Market Equilibrium simply.",
   },
@@ -849,7 +902,7 @@ const EXHIBITION_QUIZ: QuizQuestion[] = [
   {
     id: "q3",
     question: "In Physics, which formula represents Newton's Second Law of Motion?",
-    options: ["E = mc²", "V = I × R", "F = m × a", "P = W / t"],
+    options: ["E = mc^2", "V = I x R", "F = m x a", "P = W / t"],
     correctIndex: 2,
     fact: "Force equals mass multiplied by acceleration (F = ma), measured in Newtons (N).",
   },
@@ -864,18 +917,18 @@ const EXHIBITION_QUIZ: QuizQuestion[] = [
     id: "q5",
     question: "Why does Holy Cross School AI use a Vercel Serverless Backend (/api/chat)?",
     options: [
-      "To hide and protect the AI API key securely on the server",
+      "To keep the AI API key hidden and secure on the server",
       "To slow down the website",
       "To remove Hindi language support",
-      "To require every parent to buy an API key",
+      "To force visitors to buy an API key",
     ],
     correctIndex: 0,
-    fact: "Keeping API keys in Vercel Environment Variables protects them completely while giving every visitor instant AI access.",
+    fact: "Storing keys in Vercel Environment Variables protects them completely while giving every visitor instant AI access.",
   },
 ];
 
 // ============================================================================
-// SECTION 5: OFFLINE EXHIBITION FAILSAFE ENGINE (INSTANT BACKUP ANSWERS)
+// SECTION 5: OFFLINE EXHIBITION FAILSAFE ENGINE (ZERO-BACKTICK SAFE)
 // ============================================================================
 function getOfflineBackupAnswer(
   question: string,
@@ -883,7 +936,7 @@ function getOfflineBackupAnswer(
   user: UserProfile | null
 ): string {
   const q = question.toLowerCase().trim();
-  const visitor = user?.name && user.name !== "Exhibition Visitor" ? `, ${user.name}` : "";
+  const visitor = user?.name && user.name !== "Exhibition Visitor" ? ", " + user.name : "";
 
   if (
     /^(hi|hello|hey|namaste|good morning|good afternoon|good evening)\b/.test(q) ||
@@ -892,9 +945,19 @@ function getOfflineBackupAnswer(
     q.includes("कैसे हैं")
   ) {
     if (language === "hi") {
-      return `**नमस्ते${visitor}!** मैं **होली क्रॉस स्कूल एआई** हूँ और बिल्कुल ठीक हूँ, धन्यवाद!\n\nमैं होली क्रॉस स्कूल, खंडवा रोड, इंदौर की जानकारी, हमारे सभी 45+ शिक्षकों का विवरण, NCERT पढ़ाई, गणित, विज्ञान और क्रिकेट से जुड़े सवालों के जवाब देने के लिए तैयार हूँ। आज मैं आपकी क्या मदद करूँ?`;
+      return (
+        "**नमस्ते" +
+        visitor +
+        "!** मैं **होली क्रॉस स्कूल एआई** हूँ और बिल्कुल ठीक हूँ, धन्यवाद!\n\n" +
+        "मैं होली क्रॉस स्कूल, खंडवा रोड, इंदौर की जानकारी, हमारे सभी 45 शिक्षकों का विवरण, NCERT पढ़ाई, गणित, विज्ञान और क्रिकेट से जुड़े सवालों के जवाब देने के लिए तैयार हूँ। आज मैं आपकी क्या मदद करूँ?"
+      );
     }
-    return `**Hello${visitor}!** I am **Holy Cross School AI**, and I am doing wonderful—thank you for asking!\n\nI am honored to welcome parents, judges, teachers, and students to our exhibition showcase. Ask me about **Holy Cross School, Indore**, any of our **45+ faculty & office staff members**, NCERT academics, science, mathematics, or cricket!`;
+    return (
+      "**Hello" +
+      visitor +
+      "!** I am **Holy Cross School AI**, and I am doing wonderful—thank you for asking!\n\n" +
+      "I am honored to welcome parents, judges, teachers, and students to our exhibition showcase. Ask me about **Holy Cross School, Indore**, any of our **45 faculty & office staff members**, NCERT academics, science, mathematics, or cricket!"
+    );
   }
 
   if (
@@ -904,16 +967,54 @@ function getOfflineBackupAnswer(
     q.includes("किसने बनाया")
   ) {
     if (language === "hi") {
-      return `**होली क्रॉस स्कूल एआई का निर्माण**\n\nइस आधिकारिक एआई पोर्टल को **गौरव लालवानी (कक्षा IX B)** ने कंप्यूटर साइंस और आईटी मेंटर **प्रियंका मैम** के मार्गदर्शन तथा आदरणीय प्रधानाचार्या **सिस्टर लियासा जोसेफ** की प्रेरणा से तैयार किया है।`;
+      return (
+        "**होली क्रॉस स्कूल एआई का निर्माण**\n\n" +
+        "इस आधिकारिक एआई पोर्टल को **गौरव लालवानी (कक्षा IX B)** ने कंप्यूटर साइंस और आईटी मेंटर **प्रियंका मैम** के मार्गदर्शन तथा आदरणीय प्रधानाचार्या **सिस्टर लियासा जोसेफ** की प्रेरणा से तैयार किया है।"
+      );
     }
-    return `**About the Creator & Technical Architecture**\n\n**Holy Cross School AI** was architected by **${SCHOOL_CONFIG.architect}** under the mentorship of **${SCHOOL_CONFIG.mentor}** and the inspiring leadership of Principal **${SCHOOL_CONFIG.principal}**.\n\n- **Frontend:** React + TypeScript + Vite featuring a 60FPS Morphing Orb & Dual-Tab interface.\n- **Backend:** Secure Vercel Serverless API (`/api/chat`) keeping keys safely hidden with automatic failover.\n- **Voice & Bilingual:** Built-in English & Hindi Speech Recognition plus Read Aloud voice synthesis.`;
+    return (
+      "**About the Creator & Technical Architecture**\n\n" +
+      "**Holy Cross School AI** was architected by **" +
+      SCHOOL_CONFIG.architect +
+      "** under the mentorship of **" +
+      SCHOOL_CONFIG.mentor +
+      "** and the inspiring leadership of Principal **" +
+      SCHOOL_CONFIG.principal +
+      "**.\n\n" +
+      "- **Frontend:** React + TypeScript + Vite featuring a 60FPS Morphing Orb & Dual-Tab interface.\n" +
+      "- **Backend:** Secure Vercel Serverless API (/api/chat) keeping keys safely hidden with automatic failover.\n" +
+      "- **Voice & Bilingual:** Built-in English & Hindi Speech Recognition plus Read Aloud voice synthesis."
+    );
   }
 
   if (
     q.includes("holy cross") &&
     (q.includes("about") || q.includes("overview") || q.includes("school") || q.includes("indore") || q.includes("motto"))
   ) {
-    return `**${SCHOOL_CONFIG.schoolFullName}**\n\n- **Motto:** "${SCHOOL_CONFIG.motto}"\n- **Principal:** ${SCHOOL_CONFIG.principal}\n- **Board:** ${SCHOOL_CONFIG.board}\n- **Classes:** ${SCHOOL_CONFIG.grades}\n- **Address:** ${SCHOOL_CONFIG.address}\n- **Official Website:** ${SCHOOL_CONFIG.links.schoolWebsite}\n\nHoly Cross School nurtures holistic excellence—balancing strong CBSE academics with moral values, science innovation, fine arts, and athletics.`;
+    return (
+      "**" +
+      SCHOOL_CONFIG.schoolFullName +
+      "**\n\n" +
+      '- **Motto:** "' +
+      SCHOOL_CONFIG.motto +
+      '"\n' +
+      "- **Principal:** " +
+      SCHOOL_CONFIG.principal +
+      "\n" +
+      "- **Board:** " +
+      SCHOOL_CONFIG.board +
+      "\n" +
+      "- **Classes:** " +
+      SCHOOL_CONFIG.grades +
+      "\n" +
+      "- **Address:** " +
+      SCHOOL_CONFIG.address +
+      "\n" +
+      "- **Official Website:** " +
+      SCHOOL_CONFIG.links.schoolWebsite +
+      "\n\n" +
+      "Holy Cross School nurtures holistic excellence—balancing strong CBSE academics with moral values, science innovation, fine arts, and athletics."
+    );
   }
 
   const matchedFaculty = FACULTY_DATA.find((f) => {
@@ -930,7 +1031,25 @@ function getOfflineBackupAnswer(
   });
 
   if (matchedFaculty) {
-    return `**${matchedFaculty.name} — ${matchedFaculty.role}**\n\n- **Department:** ${matchedFaculty.category} (${matchedFaculty.wing})\n- **Core Focus:** ${matchedFaculty.experienceFocus}\n- **Specialties:** ${matchedFaculty.specialties.join(", ")}\n\n${matchedFaculty.description}`;
+    return (
+      "**" +
+      matchedFaculty.name +
+      " — " +
+      matchedFaculty.role +
+      "**\n\n" +
+      "- **Department:** " +
+      matchedFaculty.category +
+      " (" +
+      matchedFaculty.wing +
+      ")\n" +
+      "- **Core Focus:** " +
+      matchedFaculty.experienceFocus +
+      "\n" +
+      "- **Specialties:** " +
+      matchedFaculty.specialties.join(", ") +
+      "\n\n" +
+      matchedFaculty.description
+    );
   }
 
   return "";
@@ -957,7 +1076,7 @@ function FormattedAnswer({ text, fontSize }: { text: string; fontSize: number })
   const lines = text.split("\n");
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: `${fontSize}px`, lineHeight: 1.68 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: fontSize + "px", lineHeight: 1.68 }}>
       {lines.map((rawLine, index) => {
         const line = rawLine.trim();
         if (!line || line === "---" || line === "***") {
@@ -970,7 +1089,7 @@ function FormattedAnswer({ text, fontSize }: { text: string; fontSize: number })
             <div
               key={index}
               style={{
-                fontSize: `${fontSize + 2}px`,
+                fontSize: fontSize + 2 + "px",
                 fontWeight: 900,
                 color: "#fbbf24",
                 marginTop: index > 0 ? "6px" : "0px",
@@ -1012,7 +1131,7 @@ function FormattedAnswer({ text, fontSize }: { text: string; fontSize: number })
 }
 
 // ============================================================================
-// SECTION 7: EXECUTIVE DESKTOP & 60FPS ANIMATION STYLESHEET
+// SECTION 7: SELF-CONTAINED PREMIUM STYLESHEET (INCLUDES FULL MORPHORB CSS)
 // ============================================================================
 const PORTAL_STYLES = `
   @keyframes hcFloat {
@@ -1047,6 +1166,15 @@ const PORTAL_STYLES = `
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0px); }
   }
+  @keyframes moBounce {
+    0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+    40% { transform: translateY(-4px); opacity: 1; }
+  }
+  @keyframes moShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    75% { transform: translateX(6px); }
+  }
 
   .hc-orb-float { animation: hcFloat 3.4s ease-in-out infinite; }
   .hc-orb-ring-1 { animation: hcSpin 6.5s linear infinite; }
@@ -1054,7 +1182,8 @@ const PORTAL_STYLES = `
   .hc-orb-core { animation: hcPulseCore 1.9s ease-in-out infinite; }
   .hc-mic-live { animation: hcMicPulse 1.2s infinite; }
   .hc-fade-up { animation: hcFadeUp 0.28s ease-out; }
-  .mo-aurora i { animation: hcAuroraDrift 5.2s ease-in-out infinite; }
+  .scroll-hide::-webkit-scrollbar { display: none; }
+  .scroll-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
   .hc-thinking-bar {
     height: 4px;
@@ -1064,9 +1193,188 @@ const PORTAL_STYLES = `
     animation: hcShimmer 1.4s linear infinite;
   }
 
+  /* SELF-CONTAINED MORPHORB CLASSES */
+  .mo-root {
+    position: relative;
+    width: 100%;
+    min-height: 485px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 26px;
+    background: radial-gradient(circle at 50% 42%, rgba(30, 58, 138, 0.36), rgba(2, 6, 23, 0.96) 76%);
+  }
+  .mo-bg {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 50% 50%, rgba(251, 191, 36, calc(0.14 * var(--bloom))), transparent 55%),
+      radial-gradient(circle at 28% 28%, rgba(56, 189, 248, 0.12), transparent 50%);
+  }
+  .mo-halo {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 340px;
+    height: 340px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: calc(var(--oHalo) + var(--oCenter) * 0.45);
+    background: radial-gradient(circle, rgba(251, 191, 36, 0.24), rgba(56, 189, 248, 0.1) 45%, transparent 72%);
+    filter: blur(22px);
+  }
+  .mo-mover { position: relative; z-index: 5; display: flex; align-items: center; justify-content: center; }
+  .mo-actor {
+    position: relative;
+    width: var(--w);
+    max-width: calc(100vw - 44px);
+    height: var(--h);
+    border-radius: var(--r);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .mo-actor[data-shake] { animation: moShake 0.26s ease; }
+  .mo-underglow {
+    position: absolute;
+    inset: -10px;
+    border-radius: var(--r);
+    opacity: var(--oGlow);
+    background: radial-gradient(ellipse at center, rgba(251, 191, 36, 0.28), rgba(56, 189, 248, 0.16) 60%, transparent 78%);
+    filter: blur(14px);
+    pointer-events: none;
+  }
+  .mo-halo-green {
+    position: absolute;
+    inset: -14px;
+    border-radius: var(--r);
+    opacity: var(--oGreen);
+    transform: scale(var(--gs));
+    background: radial-gradient(circle, rgba(52, 211, 153, 0.36), transparent 72%);
+    filter: blur(16px);
+    pointer-events: none;
+  }
+  .mo-surface {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--r);
+    opacity: var(--oPill);
+    background: rgba(15, 23, 42, 0.94);
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .mo-aurora { position: absolute; inset: 0; opacity: calc(var(--oAur) * 0.36); pointer-events: none; }
+  .mo-aurora i { position: absolute; border-radius: 50%; filter: blur(22px); animation: hcAuroraDrift 5.2s ease-in-out infinite; }
+  .mo-aurora i:nth-child(1) { width: 140px; height: 60px; left: 5%; top: -10px; background: #fbbf24; }
+  .mo-aurora i:nth-child(2) { width: 160px; height: 60px; right: 8%; bottom: -15px; background: #38bdf8; }
+  .mo-aurora i:nth-child(3) { width: 120px; height: 50px; left: 45%; top: 10px; background: #818cf8; }
+  .mo-aurora i:nth-child(4) { width: 120px; height: 50px; left: 25%; bottom: -10px; background: #34d399; }
+  .mo-ball {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    opacity: var(--oBall);
+    background: radial-gradient(circle at 35% 30%, #fde68a, #f59e0b 55%, #1d4ed8 100%);
+    pointer-events: none;
+  }
+  .mo-green {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    opacity: var(--oGreen);
+    transform: scale(var(--gs));
+    background: radial-gradient(circle at 35% 30%, #6ee7b7, #10b981 65%, #064e3b 100%);
+    pointer-events: none;
+  }
+  .mo-card {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--r);
+    opacity: var(--oCard);
+    transform: scale(var(--cs));
+    background: linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(2, 6, 23, 0.98));
+    border: 1px solid rgba(251, 191, 36, 0.38);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85);
+    pointer-events: none;
+  }
+  .mo-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--r);
+    opacity: var(--oRing);
+    border: 1.5px solid rgba(251, 191, 36, 0.45);
+    pointer-events: none;
+  }
+  .mo-input {
+    position: relative;
+    z-index: 6;
+    width: 100%;
+    height: 100%;
+    padding: 0 10px 0 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: var(--oInput);
+    transform: scale(var(--inScale));
+  }
+  .mo-spark { width: 20px; height: 20px; color: #fbbf24; flex-shrink: 0; }
+  .mo-field { flex: 1; min-width: 0; background: transparent; border: none; outline: none; color: #f8fafc; font-size: 14.5px; font-weight: 600; }
+  .mo-field::placeholder { color: #94a3b8; }
+  .mo-send {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #020617;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .mo-send svg { width: 18px; height: 18px; }
+  .mo-status {
+    position: relative;
+    z-index: 8;
+    margin-top: 14px;
+    min-height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: var(--sOp);
+    transform: translateY(calc(var(--sTy) * 1px));
+    pointer-events: none;
+  }
+  .mo-lab { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 800; color: #fbbf24; letter-spacing: 0.6px; }
+  .mo-lab-done { color: #34d399; }
+  .mo-dots { display: inline-flex; gap: 3px; }
+  .mo-dots i { width: 4px; height: 4px; border-radius: 50%; background: #38bdf8; display: inline-block; animation: moBounce 1s infinite ease-in-out; }
+  .mo-dots i:nth-child(2) { animation-delay: 0.15s; }
+  .mo-dots i:nth-child(3) { animation-delay: 0.3s; }
+  .mo-answer { position: relative; z-index: 8; width: 100%; height: 100%; padding: 20px 24px; display: flex; flex-direction: column; overflow-y: auto; }
+  .mo-a-head { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; color: #38bdf8; opacity: var(--hOp); }
+  .mo-a-dot { width: 8px; height: 8px; border-radius: 50%; background: #34d399; display: inline-block; transform: scale(var(--dotS)); }
+  .mo-reset {
+    padding: 8px 18px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(251, 191, 36, 0.4);
+    color: #fbbf24;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  /* PORTAL SHELL & CARDS */
   .hc-desktop-shell {
     min-height: 100vh;
     width: 100%;
+    background-color: #020617;
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
@@ -1074,16 +1382,16 @@ const PORTAL_STYLES = `
     flex-direction: column;
     padding-bottom: 108px;
     position: relative;
+    color: #f8fafc;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
-
   .hc-glass-panel {
-    background: rgba(9, 17, 35, 0.84);
+    background: rgba(9, 17, 35, 0.85);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid rgba(56, 189, 248, 0.26);
     box-shadow: 0 16px 46px rgba(0, 0, 0, 0.5);
   }
-
   .hc-hover-card {
     background: rgba(15, 23, 42, 0.88);
     border: 1px solid rgba(148, 163, 184, 0.22);
@@ -1091,10 +1399,9 @@ const PORTAL_STYLES = `
   }
   .hc-hover-card:hover {
     transform: translateY(-2px);
-    border-color: rgba(251, 191, 36, 0.6);
+    border-color: rgba(251, 191, 36, 0.62);
     box-shadow: 0 12px 28px rgba(251, 191, 36, 0.14);
   }
-
   .hc-btn {
     transition: transform 0.16s ease, filter 0.16s ease, background 0.2s ease;
     cursor: pointer;
@@ -1105,73 +1412,61 @@ const PORTAL_STYLES = `
 
   .hc-floating-dock {
     position: fixed;
-    bottom: 18px;
+    bottom: 16px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 45;
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 10px 18px;
+    gap: 10px;
+    padding: 9px 16px;
     border-radius: 999px;
-    background: rgba(6, 12, 28, 0.93);
+    background: rgba(6, 12, 28, 0.94);
     backdrop-filter: blur(22px);
     -webkit-backdrop-filter: blur(22px);
-    border: 1px solid rgba(251, 191, 36, 0.42);
+    border: 1px solid rgba(251, 191, 36, 0.44);
     box-shadow: 0 18px 50px rgba(0, 0, 0, 0.72), 0 0 26px rgba(56, 189, 248, 0.2);
-    max-width: calc(100vw - 24px);
+    max-width: calc(100vw - 20px);
     overflow-x: auto;
   }
-
   .hc-fab-quick {
     position: fixed;
-    bottom: 22px;
-    right: 22px;
+    bottom: 20px;
+    right: 20px;
     z-index: 46;
-    width: 56px;
-    height: 56px;
+    width: 54px;
+    height: 54px;
     border-radius: 50%;
-    border: 1.5px solid rgba(251, 191, 36, 0.72);
+    border: 1.5px solid rgba(251, 191, 36, 0.75);
     background: linear-gradient(135deg, #fbbf24, #d97706);
     color: #020617;
     font-weight: 900;
-    font-size: 21px;
+    font-size: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
     box-shadow: 0 12px 32px rgba(251, 191, 36, 0.42);
     cursor: pointer;
   }
-
   .hc-desktop-grid {
     display: grid;
     grid-template-columns: 330px 1fr;
     gap: 24px;
     align-items: start;
   }
-
   .hc-two-col {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 22px;
   }
-
   @media (max-width: 980px) {
-    .hc-desktop-grid, .hc-two-col {
-      grid-template-columns: 1fr;
-    }
-    .hc-fab-quick {
-      bottom: 86px;
-      right: 14px;
-      width: 48px;
-      height: 48px;
-      font-size: 18px;
-    }
+    .hc-desktop-grid, .hc-two-col { grid-template-columns: 1fr; }
+    .hc-fab-quick { bottom: 84px; right: 14px; width: 46px; height: 46px; font-size: 17px; }
   }
 `;
 
 // ============================================================================
-// SECTION 8: OFFICIAL HOLY CROSS CREST SVG COMPONENT
+// SECTION 8: OFFICIAL HOLY CROSS CREST SVG
 // ============================================================================
 function HolyCrossCrestLogo({ size = 48 }: { size?: number }) {
   const outerR = Math.round(size * 0.28);
@@ -1181,9 +1476,9 @@ function HolyCrossCrestLogo({ size = 48 }: { size?: number }) {
   return (
     <div
       style={{
-        width: `${size}px`,
-        height: `${size}px`,
-        borderRadius: `${outerR}px`,
+        width: size + "px",
+        height: size + "px",
+        borderRadius: outerR + "px",
         background: "linear-gradient(135deg, #fde68a 0%, #fbbf24 45%, #b45309 100%)",
         padding: "2px",
         boxShadow: "0 0 24px rgba(251, 191, 36, 0.48)",
@@ -1198,7 +1493,7 @@ function HolyCrossCrestLogo({ size = 48 }: { size?: number }) {
         style={{
           width: "100%",
           height: "100%",
-          borderRadius: `${innerR}px`,
+          borderRadius: innerR + "px",
           background: "radial-gradient(circle at 50% 25%, #1e3a8a, #020617 88%)",
           display: "flex",
           alignItems: "center",
@@ -1227,11 +1522,12 @@ function HolyCrossCrestLogo({ size = 48 }: { size?: number }) {
 }
 
 // ============================================================================
-// SECTION 9: TAB 1 — LIVING 60FPS MORPHING PARTICLE ORB STAGE
+// SECTION 9: TAB 1 — LIVING 60FPS MORPHING ORB STAGE
 // ============================================================================
 interface MorphOrbStageProps {
   language: LanguageCode;
   fontSize: number;
+  palette: ThemePalette;
   isListening: boolean;
   onStartVoice: (cb: (spoken: string) => void) => void;
   onAsk: (q: string) => Promise<{ reply: string; source: "cloud" | "offline-backup" }>;
@@ -1246,6 +1542,7 @@ interface MorphOrbStageProps {
 function MorphOrbStage({
   language,
   fontSize,
+  palette,
   isListening,
   onStartVoice,
   onAsk,
@@ -1406,9 +1703,8 @@ function MorphOrbStage({
       className="mo-root"
       data-phase={phase}
       style={makeOrbStyle(phaseVars[phase], {
-        minHeight: "485px",
         padding: "26px 16px",
-        border: "1px solid rgba(56, 189, 248, 0.3)",
+        border: "1px solid " + palette.border,
         boxShadow: "0 22px 60px rgba(0, 0, 0, 0.58)",
       })}
     >
@@ -1435,7 +1731,7 @@ function MorphOrbStage({
                 position: "absolute",
                 inset: 0,
                 borderRadius: "50%",
-                border: "2px dashed rgba(56, 189, 248, 0.72)",
+                border: "2px dashed " + palette.secondary,
               }}
             />
             <div
@@ -1445,7 +1741,7 @@ function MorphOrbStage({
                 inset: "9px",
                 borderRadius: "50%",
                 border: "2.5px solid transparent",
-                borderTopColor: "#fbbf24",
+                borderTopColor: palette.primary,
                 borderBottomColor: "#34d399",
               }}
             />
@@ -1455,24 +1751,24 @@ function MorphOrbStage({
                 width: "52px",
                 height: "52px",
                 borderRadius: "50%",
-                background: "radial-gradient(circle at 30% 28%, #fef08a, #f59e0b 52%, #1d4ed8 100%)",
+                background: "radial-gradient(circle at 30% 28%, #fef08a, " + palette.primary + " 52%, #1d4ed8 100%)",
               }}
             />
           </div>
-          <div style={{ fontSize: "21px", fontWeight: 900, color: "#f8fafc", textAlign: "center", letterSpacing: "0.4px" }}>
+          <div style={{ fontSize: "21px", fontWeight: 900, color: "#f8fafc", textAlign: "center" }}>
             {language === "hi" ? "होली क्रॉस स्कूल एआई से कुछ भी पूछें" : "Ask Holy Cross School AI Anything"}
           </div>
           <div style={{ fontSize: "12.5px", color: "#94a3b8", marginTop: "5px", textAlign: "center" }}>
             {language === "hi"
-              ? "स्कूल • 45+ शिक्षक विवरण • NCERT पढ़ाई • व्यक्तिगत प्रश्न • आवाज़ से पूछें"
-              : "School Info • All 45+ Faculty Profiles • NCERT Academics • Voice Enabled"}
+              ? "स्कूल • 45 शिक्षक विवरण • NCERT पढ़ाई • व्यक्तिगत प्रश्न • आवाज़ से पूछें"
+              : "School Info • All 45 Faculty Profiles • NCERT Academics • Voice Enabled"}
           </div>
         </div>
       )}
 
       <div className="mo-mover">
         <div
-          className={`mo-actor ${phase === "think" ? "hc-orb-float" : ""}`}
+          className={"mo-actor " + (phase === "think" ? "hc-orb-float" : "")}
           data-shake={shake ? "true" : undefined}
           style={{
             transition:
@@ -1498,7 +1794,7 @@ function MorphOrbStage({
                   position: "absolute",
                   inset: "-14px",
                   borderRadius: "50%",
-                  border: "2.5px dashed rgba(56, 189, 248, 0.82)",
+                  border: "2.5px dashed " + palette.secondary,
                   pointerEvents: "none",
                 }}
               />
@@ -1509,7 +1805,7 @@ function MorphOrbStage({
                   inset: "-6px",
                   borderRadius: "50%",
                   border: "2.5px solid transparent",
-                  borderTopColor: "#fbbf24",
+                  borderTopColor: palette.primary,
                   borderBottomColor: "#34d399",
                   pointerEvents: "none",
                 }}
@@ -1517,7 +1813,7 @@ function MorphOrbStage({
             </>
           )}
 
-          <div className={`mo-ball ${phase === "think" ? "hc-orb-core" : ""}`} style={{ transition: "opacity 0.32s ease" }} />
+          <div className={"mo-ball " + (phase === "think" ? "hc-orb-core" : "")} style={{ transition: "opacity 0.32s ease" }} />
           <div className="mo-green" style={{ transition: "opacity 0.3s ease, transform 0.3s ease" }} />
           <div className="mo-card" style={{ transition: "opacity 0.38s ease, transform 0.38s ease" }} />
           <div className="mo-ring" />
@@ -1552,7 +1848,7 @@ function MorphOrbStage({
                     void runQuery(spoken);
                   })
                 }
-                className={`hc-btn ${isListening ? "hc-mic-live" : ""}`}
+                className={"hc-btn " + (isListening ? "hc-mic-live" : "")}
                 title="Speak your question"
                 style={{
                   width: "40px",
@@ -1579,14 +1875,14 @@ function MorphOrbStage({
           )}
 
           {phase === "answered" && (
-            <div className="mo-answer" style={{ display: "flex", gap: "10px" }}>
+            <div className="mo-answer" style={{ gap: "10px" }}>
               <div
                 className="mo-a-head"
                 style={{ justifyContent: "space-between", flexWrap: "wrap", gap: "8px", marginBottom: "4px" }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <span className="mo-a-dot" />
-                  <span>HOLY CROSS SCHOOL AI • {questionAsked.slice(0, 44)}</span>
+                  <span>HOLY CROSS SCHOOL AI • {questionAsked.slice(0, 42)}</span>
                 </div>
                 <div style={{ display: "flex", gap: "8px" }}>
                   <button
@@ -1665,7 +1961,6 @@ function MorphOrbStage({
           <button
             type="button"
             className="mo-reset hc-btn"
-            style={{ display: "inline-flex", marginTop: 0 }}
             onClick={() => {
               onStopSpeak();
               setPhase("idle");
@@ -1678,7 +1973,9 @@ function MorphOrbStage({
             type="button"
             className="hc-btn"
             onClick={() =>
-              void runQuery(`Explain this simply in ${language === "hi" ? "English" : "Hindi"}: ${questionAsked}`)
+              void runQuery(
+                "Explain this simply in " + (language === "hi" ? "English" : "Hindi") + ": " + questionAsked
+              )
             }
             style={{
               padding: "8px 15px",
@@ -1695,7 +1992,7 @@ function MorphOrbStage({
           <button
             type="button"
             className="hc-btn"
-            onClick={() => void runQuery(`Give a clear real-life example for: ${questionAsked}`)}
+            onClick={() => void runQuery("Give a clear real-life example for: " + questionAsked)}
             style={{
               padding: "8px 15px",
               borderRadius: "999px",
@@ -1731,23 +2028,11 @@ function MorphOrbStage({
 }
 
 // ============================================================================
-// SECTION 10: STORAGE HELPER
-// ============================================================================
-function loadJSON<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-// ============================================================================
-// SECTION 11: MAIN HOLY CROSS SCHOOL AI APPLICATION
+// SECTION 10: MAIN HOLY CROSS SCHOOL AI PORTAL
 // ============================================================================
 export default function App() {
-  // ---------------- AUTH & PASSWORD STATE (NO OTP) ----------------
-  const [user, setUser] = useState<UserProfile | null>(() => loadJSON<UserProfile | null>("hcs_user_v3", null));
+  // ---------------- AUTH & PASSWORD STATE ----------------
+  const [user, setUser] = useState<UserProfile | null>(() => loadJSON<UserProfile | null>("hcs_user_v4", null));
   const [authMode, setAuthMode] = useState<"signin" | "register">("signin");
   const [loginName, setLoginName] = useState("");
   const [loginEmail, setLoginEmail] = useState("");
@@ -1759,27 +2044,27 @@ export default function App() {
 
   // ---------------- GLOBAL PORTAL SETTINGS ----------------
   const [activeTab, setActiveTab] = useState<ActiveTab>("orb");
-  const [language, setLanguage] = useState<LanguageCode>(() => {
-    const saved = localStorage.getItem("hcs_lang_v3");
-    return saved === "hi" ? "hi" : "en";
-  });
+  const [accentTheme, setAccentTheme] = useState<AccentTheme>("royal");
+  const [language, setLanguage] = useState<LanguageCode>(() =>
+    localStorage.getItem("hcs_lang_v4") === "hi" ? "hi" : "en"
+  );
   const [voiceAutoSpeak, setVoiceAutoSpeak] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [fontComfort, setFontComfort] = useState<FontComfort>("normal");
   const [schoolBg, setSchoolBg] = useState<string>(
-    () => localStorage.getItem("hcs_school_bg_v3") || SCHOOL_CONFIG.defaultBgPhoto
+    () => localStorage.getItem("hcs_school_bg_v4") || SCHOOL_CONFIG.defaultBgPhoto
   );
   const [sessionCount, setSessionCount] = useState<number>(() =>
-    Number(localStorage.getItem("hcs_session_q_count_v3") || "0")
+    Number(localStorage.getItem("hcs_session_q_count_v4") || "0")
   );
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
-  // ---------------- ORB & FULL CHAT STATE ----------------
+  // ---------------- ORB & CHAT STATE ----------------
   const [topicCategory, setTopicCategory] = useState<string>("Exhibition");
   const [externalOrbPrompt, setExternalOrbPrompt] = useState<string>("");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() =>
-    loadJSON<ChatMessage[]>("hcs_chat_thread_v3", [WELCOME_CHAT_MESSAGE])
+    loadJSON<ChatMessage[]>("hcs_chat_thread_v4", [WELCOME_CHAT_MESSAGE])
   );
   const [chatInput, setChatInput] = useState<string>("");
   const [chatLoading, setChatLoading] = useState<boolean>(false);
@@ -1791,20 +2076,20 @@ export default function App() {
   const [dirCategory, setDirCategory] = useState<string>("All");
   const [selectedFaculty, setSelectedFaculty] = useState<FacultyMember | null>(null);
 
-  // ---------------- EXHIBITION QUIZ & NCERT STUDY STATE ----------------
+  // ---------------- EXHIBITION QUIZ & NCERT FORMULAS ----------------
   const [formulaSubject, setFormulaSubject] = useState<string>("All");
   const [quizIndex, setQuizIndex] = useState<number>(0);
   const [quizSelected, setQuizSelected] = useState<number | null>(null);
   const [quizScore, setQuizScore] = useState<number>(0);
 
-  // ---------------- HISTORY & BOOKMARKS STATE ----------------
-  const [history, setHistory] = useState<HistoryEntry[]>(() => loadJSON<HistoryEntry[]>("hcs_history_v3", []));
+  // ---------------- HISTORY & BOOKMARKS ----------------
+  const [history, setHistory] = useState<HistoryEntry[]>(() => loadJSON<HistoryEntry[]>("hcs_history_v4", []));
   const [historyFilter, setHistoryFilter] = useState<"all" | "bookmarked">("all");
   const [historySearch, setHistorySearch] = useState<string>("");
 
-  // ---------------- CRICKET LIVE SCOREBOARD STATE ----------------
+  // ---------------- CRICKET LIVE SCOREBOARD ----------------
   const [matchState, setMatchState] = useState<CricketMatchState>(() =>
-    loadJSON<CricketMatchState>("hcs_cricket_v3", {
+    loadJSON<CricketMatchState>("hcs_cricket_v4", {
       teamA: "IND",
       teamB: "AUS",
       runs: 156,
@@ -1820,27 +2105,29 @@ export default function App() {
     })
   );
 
+  const palette = ACCENT_THEMES[accentTheme];
+
   useEffect(() => {
     try {
-      localStorage.setItem("hcs_lang_v3", language);
+      localStorage.setItem("hcs_lang_v4", language);
     } catch {
-      // ignore storage errors
+      // ignore storage limits
     }
   }, [language]);
 
   useEffect(() => {
     try {
-      localStorage.setItem("hcs_chat_thread_v3", JSON.stringify(chatMessages.slice(-40)));
+      localStorage.setItem("hcs_chat_thread_v4", JSON.stringify(chatMessages.slice(-40)));
     } catch {
-      // ignore storage errors
+      // ignore storage limits
     }
   }, [chatMessages]);
 
   useEffect(() => {
     try {
-      localStorage.setItem("hcs_cricket_v3", JSON.stringify(matchState));
+      localStorage.setItem("hcs_cricket_v4", JSON.stringify(matchState));
     } catch {
-      // ignore storage errors
+      // ignore storage limits
     }
   }, [matchState]);
 
@@ -1874,7 +2161,7 @@ export default function App() {
     }
     window.speechSynthesis.cancel();
     const clean = rawText
-      .replace(/[*#_`>•]/g, " ")
+      .replace(/[*#_>•]/g, " ")
       .replace(/\s+/g, " ")
       .trim();
     if (!clean) return;
@@ -1907,7 +2194,7 @@ export default function App() {
     const SpeechRec = win.SpeechRecognition || win.webkitSpeechRecognition;
 
     if (!SpeechRec) {
-      showToast("Voice Mic works best on Chrome, Edge, or Android Chrome.", "warn");
+      showToast("Voice Mic works best in Chrome, Edge, or Android Chrome.", "warn");
       return;
     }
 
@@ -1929,9 +2216,7 @@ export default function App() {
       };
       recognition.onresult = (event) => {
         const transcript = event.results?.[0]?.[0]?.transcript?.trim();
-        if (transcript) {
-          onTranscript(transcript);
-        }
+        if (transcript) onTranscript(transcript);
       };
 
       recognition.start();
@@ -1941,7 +2226,7 @@ export default function App() {
     }
   };
 
-  // ---------------- COPY HELPER ----------------
+  // ---------------- COPY & BOOKMARKS ----------------
   const handleCopy = (text: string) => {
     if (navigator.clipboard) {
       void navigator.clipboard
@@ -1953,12 +2238,7 @@ export default function App() {
     }
   };
 
-  // ---------------- HISTORY & BOOKMARK HELPERS ----------------
-  const recordInteraction = (
-    question: string,
-    answer: string,
-    source: "cloud" | "offline-backup"
-  ) => {
+  const recordInteraction = (question: string, answer: string, source: "cloud" | "offline-backup") => {
     const stamp = new Date().toLocaleString([], {
       day: "2-digit",
       month: "short",
@@ -1967,7 +2247,7 @@ export default function App() {
     });
 
     const entry: HistoryEntry = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      id: Date.now() + "-" + Math.random().toString(36).slice(2, 7),
       question,
       answer,
       timestamp: stamp,
@@ -1979,9 +2259,9 @@ export default function App() {
     setHistory((prev) => {
       const next = [entry, ...prev].slice(0, 60);
       try {
-        localStorage.setItem("hcs_history_v3", JSON.stringify(next));
+        localStorage.setItem("hcs_history_v4", JSON.stringify(next));
       } catch {
-        // ignore storage errors
+        // ignore
       }
       return next;
     });
@@ -1989,9 +2269,9 @@ export default function App() {
     setSessionCount((prev) => {
       const next = prev + 1;
       try {
-        localStorage.setItem("hcs_session_q_count_v3", String(next));
+        localStorage.setItem("hcs_session_q_count_v4", String(next));
       } catch {
-        // ignore storage errors
+        // ignore
       }
       return next;
     });
@@ -2001,9 +2281,9 @@ export default function App() {
     setHistory((prev) => {
       const next = prev.map((item) => (item.id === id ? { ...item, bookmarked: !item.bookmarked } : item));
       try {
-        localStorage.setItem("hcs_history_v3", JSON.stringify(next));
+        localStorage.setItem("hcs_history_v4", JSON.stringify(next));
       } catch {
-        // ignore storage errors
+        // ignore
       }
       return next;
     });
@@ -2013,10 +2293,10 @@ export default function App() {
     setChatMessages((prev) =>
       prev.map((m) => (m.id === msg.id ? { ...m, bookmarked: !m.bookmarked } : m))
     );
-    showToast(msg.bookmarked ? "Removed from pinned items." : "Pinned answer saved!", "success");
+    showToast(msg.bookmarked ? "Removed from pinned notes." : "Answer pinned!", "success");
   };
 
-  // ---------------- CORE AI ENGINE (/api/chat + OFFLINE FAILSAFE) ----------------
+  // ---------------- CORE AI REQUEST ENGINE (/api/chat + OFFLINE FAILSAFE) ----------------
   const executeAIQuery = async (
     questionText: string,
     overrideLang?: LanguageCode
@@ -2058,8 +2338,8 @@ export default function App() {
 
       const gracefulFallback =
         activeLang === "hi"
-          ? `**कनेक्शन नोटिस:** अभी सर्वर व्यस्त है या इंटरनेट धीमा है। कृपया 2 सेकंड बाद पुनः प्रयास करें—या हमारे **45+ शिक्षकों की डायरेक्टरी** और **NCERT फॉर्मूला वॉल्ट** का उपयोग करें, जो बिना इंटरनेट भी काम करते हैं।`
-          : `**Connection Notice:** The cloud AI server is momentarily busy or offline. Please retry in a moment—or explore our **Faculty Directory (45+ detailed bios)**, **Interactive Exhibition Quiz**, and **NCERT Formula Vault**, which work 100% offline!`;
+          ? "**कनेक्शन नोटिस:** अभी सर्वर व्यस्त है या इंटरनेट धीमा है। कृपया 2 सेकंड बाद पुनः प्रयास करें—या हमारे **45 शिक्षकों की डायरेक्टरी** और **NCERT फॉर्मूला वॉल्ट** का उपयोग करें, जो बिना इंटरनेट भी काम करते हैं।"
+          : "**Connection Notice:** The cloud AI server is momentarily busy or offline. Please retry in a moment—or explore our **Faculty Directory (45 detailed bios)**, **Interactive Exhibition Quiz**, and **NCERT Formula Vault**, which work 100% offline!";
       return { reply: gracefulFallback, source: "offline-backup" };
     }
   };
@@ -2073,7 +2353,7 @@ export default function App() {
     const activeLang = overrideLang || language;
     const stamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const userMsg: ChatMessage = {
-      id: `u-${Date.now()}`,
+      id: "u-" + Date.now(),
       sender: "user",
       text: textToSend,
       timestamp: stamp,
@@ -2101,7 +2381,7 @@ export default function App() {
     window.clearTimeout(t1);
 
     const aiMsg: ChatMessage = {
-      id: `a-${Date.now()}`,
+      id: "a-" + Date.now(),
       sender: "ai",
       text: reply,
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
@@ -2120,9 +2400,9 @@ export default function App() {
     const stamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     setChatMessages((prev) => [
       ...prev,
-      { id: `ou-${Date.now()}`, sender: "user", text: q, timestamp: stamp, language },
+      { id: "ou-" + Date.now(), sender: "user", text: q, timestamp: stamp, language },
       {
-        id: `oa-${Date.now() + 1}`,
+        id: "oa-" + (Date.now() + 1),
         sender: "ai",
         text: result.reply,
         timestamp: stamp,
@@ -2151,7 +2431,7 @@ export default function App() {
       return;
     }
 
-    const accounts = loadJSON<StoredAccount[]>("hcs_accounts_v3", []);
+    const accounts = loadJSON<StoredAccount[]>("hcs_accounts_v4", []);
     const existing = accounts.find((a) => a.email === cleanEmail);
 
     if (authMode === "register") {
@@ -2173,7 +2453,7 @@ export default function App() {
               createdAt: new Date().toLocaleDateString(),
             },
           ];
-      localStorage.setItem("hcs_accounts_v3", JSON.stringify(updatedAccounts));
+      localStorage.setItem("hcs_accounts_v4", JSON.stringify(updatedAccounts));
       const profile: UserProfile = {
         name: cleanName,
         email: cleanEmail,
@@ -2181,15 +2461,15 @@ export default function App() {
         joinedAt: new Date().toLocaleDateString(),
       };
       setUser(profile);
-      localStorage.setItem("hcs_user_v3", JSON.stringify(profile));
+      localStorage.setItem("hcs_user_v4", JSON.stringify(profile));
       setLoginError("");
-      showToast(`Welcome to Holy Cross School AI, ${cleanName}!`, "success");
+      showToast("Welcome to Holy Cross School AI, " + cleanName + "!", "success");
       return;
     }
 
     if (existing) {
       if (existing.password !== cleanPass) {
-        setLoginError("Incorrect password for this email. Please try again or use the 1-Click Visitor Pass.");
+        setLoginError("Incorrect password for this email. Try again or use 1-Click Visitor Pass.");
         return;
       }
       const profile: UserProfile = {
@@ -2199,9 +2479,9 @@ export default function App() {
         joinedAt: existing.createdAt,
       };
       setUser(profile);
-      localStorage.setItem("hcs_user_v3", JSON.stringify(profile));
+      localStorage.setItem("hcs_user_v4", JSON.stringify(profile));
       setLoginError("");
-      showToast(`Welcome back, ${existing.name}!`, "success");
+      showToast("Welcome back, " + existing.name + "!", "success");
     } else {
       const baseName = cleanName || cleanEmail.split("@")[0].replace(/[._-]/g, " ");
       const capitalized = baseName.charAt(0).toUpperCase() + baseName.slice(1);
@@ -2212,7 +2492,7 @@ export default function App() {
         role: loginRole,
         createdAt: new Date().toLocaleDateString(),
       };
-      localStorage.setItem("hcs_accounts_v3", JSON.stringify([...accounts, newAcc]));
+      localStorage.setItem("hcs_accounts_v4", JSON.stringify([...accounts, newAcc]));
       const profile: UserProfile = {
         name: capitalized,
         email: cleanEmail,
@@ -2220,9 +2500,9 @@ export default function App() {
         joinedAt: newAcc.createdAt,
       };
       setUser(profile);
-      localStorage.setItem("hcs_user_v3", JSON.stringify(profile));
+      localStorage.setItem("hcs_user_v4", JSON.stringify(profile));
       setLoginError("");
-      showToast(`Signed in as ${capitalized}!`, "success");
+      showToast("Signed in as " + capitalized + "!", "success");
     }
   };
 
@@ -2235,13 +2515,13 @@ export default function App() {
       isGuest: true,
     };
     setUser(guest);
-    localStorage.setItem("hcs_user_v3", JSON.stringify(guest));
+    localStorage.setItem("hcs_user_v4", JSON.stringify(guest));
     showToast("Welcome to the Holy Cross School AI Exhibition Portal!", "success");
   };
 
   const handleLogout = () => {
     stopSpeaking();
-    localStorage.removeItem("hcs_user_v3");
+    localStorage.removeItem("hcs_user_v4");
     setUser(null);
     setLoginPassword("");
     setLoginError("");
@@ -2255,7 +2535,7 @@ export default function App() {
       const result = String(reader.result || "");
       setSchoolBg(result);
       try {
-        localStorage.setItem("hcs_school_bg_v3", result);
+        localStorage.setItem("hcs_school_bg_v4", result);
       } catch {
         // Large images stay active for current session
       }
@@ -2264,7 +2544,7 @@ export default function App() {
     reader.readAsDataURL(file);
   };
 
-  // ---------------- CRICKET SCOREBOARD ACTIONS ----------------
+  // ---------------- CRICKET ACTIONS ----------------
   const recordBall = (label: string, addRuns: number, isWicket = false, isLegal = true) => {
     setMatchState((prev) => ({
       ...prev,
@@ -2296,9 +2576,9 @@ export default function App() {
     setQuizSelected(idx);
     if (idx === currentQuiz.correctIndex) {
       setQuizScore((prev) => prev + 1);
-      showToast("Correct Answer! 🎉", "success");
+      showToast("Correct Answer!", "success");
     } else {
-      showToast("Nice try! See the explanation below.", "info");
+      showToast("See the explanation below.", "info");
     }
   };
 
@@ -2314,9 +2594,9 @@ export default function App() {
     }
   };
 
-  // ---------------- DERIVED COMPUTATIONS ----------------
+  // ---------------- DERIVED VALUES ----------------
   const fontSizePx = fontComfort === "large" ? 16.5 : 14.5;
-  const oversFormatted = `${Math.floor(matchState.balls / 6)}.${matchState.balls % 6}`;
+  const oversFormatted = Math.floor(matchState.balls / 6) + "." + (matchState.balls % 6);
   const currentRR = matchState.balls > 0 ? ((matchState.runs / matchState.balls) * 6).toFixed(2) : "0.00";
   const runsNeeded = Math.max(0, matchState.target - matchState.runs);
   const ballsRemaining = Math.max(0, 120 - matchState.balls);
@@ -2360,11 +2640,12 @@ export default function App() {
   const activePromptList = RECOMMENDED_PROMPTS[topicCategory]?.[language] || RECOMMENDED_PROMPTS.Exhibition.en;
 
   const bgImageStyle: CSSProperties = {
-    backgroundImage: `linear-gradient(180deg, rgba(2, 6, 23, 0.78) 0%, rgba(2, 6, 23, 0.94) 100%), url(${schoolBg})`,
+    backgroundImage:
+      "linear-gradient(180deg, rgba(2, 6, 23, 0.78) 0%, rgba(2, 6, 23, 0.94) 100%), url(" + schoolBg + ")",
   };
 
   // ==========================================================================
-  // RENDER 1: OFFICIAL ENTRY & PASSWORD LOGIN PORTAL
+  // VIEW 1: OFFICIAL ENTRY & PASSWORD LOGIN SCREEN
   // ==========================================================================
   if (!user) {
     return (
@@ -2413,25 +2694,17 @@ export default function App() {
             borderRadius: "30px",
             padding: "34px",
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(295px, 1fr))",
             gap: "32px",
             alignItems: "center",
           }}
         >
-          {/* LEFT EXECUTIVE BRANDING */}
+          {/* LEFT BRANDING COLUMN */}
           <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
               <HolyCrossCrestLogo size={74} />
               <div>
-                <div
-                  style={{
-                    fontSize: "11px",
-                    fontWeight: 900,
-                    letterSpacing: "1.4px",
-                    color: "#38bdf8",
-                    textTransform: "uppercase",
-                  }}
-                >
+                <div style={{ fontSize: "11px", fontWeight: 900, letterSpacing: "1.4px", color: "#38bdf8", textTransform: "uppercase" }}>
                   Official School Exhibition Portal
                 </div>
                 <h1
@@ -2461,9 +2734,7 @@ export default function App() {
                 gap: "8px",
               }}
             >
-              <div style={{ fontSize: "14.5px", fontWeight: 800, color: "#fbbf24" }}>
-                {SCHOOL_CONFIG.schoolFullName}
-              </div>
+              <div style={{ fontSize: "14.5px", fontWeight: 800, color: "#fbbf24" }}>{SCHOOL_CONFIG.schoolFullName}</div>
               <div style={{ fontSize: "13px", color: "#cbd5e1", lineHeight: 1.55 }}>
                 <strong>Motto:</strong> "{SCHOOL_CONFIG.motto}" • <strong>Principal:</strong> {SCHOOL_CONFIG.principal}
               </div>
@@ -2474,13 +2745,13 @@ export default function App() {
               {[
                 { title: "Dual AI Modes", desc: "60FPS MorphOrb + Full Chat" },
                 { title: "Voice & Hindi", desc: "Mic Input + Read Aloud" },
-                { title: "45+ Faculty Bios", desc: "Complete School Directory" },
+                { title: "45 Faculty Bios", desc: "Complete School Directory" },
                 { title: "NCERT & Quiz Hub", desc: "Formulas + Live Scoreboard" },
               ].map((feat) => (
                 <div
                   key={feat.title}
                   style={{
-                    background: "rgba(2, 6, 23, 0.7)",
+                    background: "rgba(2, 6, 23, 0.72)",
                     border: "1px solid rgba(56, 189, 248, 0.22)",
                     borderRadius: "14px",
                     padding: "12px",
@@ -2501,7 +2772,7 @@ export default function App() {
           {/* RIGHT PASSWORD LOGIN CARD */}
           <div
             style={{
-              background: "rgba(2, 6, 23, 0.8)",
+              background: "rgba(2, 6, 23, 0.82)",
               border: "1px solid rgba(56, 189, 248, 0.3)",
               borderRadius: "24px",
               padding: "26px 24px",
@@ -2727,7 +2998,7 @@ export default function App() {
   }
 
   // ==========================================================================
-  // RENDER 2: MAIN DESKTOP-GRADE HOLY CROSS SCHOOL AI PORTAL
+  // VIEW 2: MAIN HOLY CROSS SCHOOL AI PORTAL
   // ==========================================================================
   return (
     <div className="hc-desktop-shell" style={bgImageStyle}>
@@ -2764,12 +3035,12 @@ export default function App() {
       <header
         className="hc-glass-panel"
         style={{
-          padding: "14px 24px",
+          padding: "14px 22px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           flexWrap: "wrap",
-          gap: "16px",
+          gap: "14px",
           position: "sticky",
           top: 0,
           zIndex: 35,
@@ -2786,7 +3057,7 @@ export default function App() {
                 fontSize: "19px",
                 fontWeight: 900,
                 letterSpacing: "0.7px",
-                background: "linear-gradient(135deg, #fef08a, #fbbf24, #38bdf8)",
+                background: "linear-gradient(135deg, #fef08a, " + palette.primary + ", " + palette.secondary + ")",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
               }}
@@ -2799,7 +3070,7 @@ export default function App() {
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
           <button
             type="button"
             className="hc-btn"
@@ -2811,10 +3082,10 @@ export default function App() {
             style={{
               background: language === "hi" ? "rgba(251, 191, 36, 0.22)" : "rgba(56, 189, 248, 0.16)",
               color: language === "hi" ? "#fde68a" : "#7dd3fc",
-              border: `1px solid ${language === "hi" ? "rgba(251, 191, 36, 0.5)" : "rgba(56, 189, 248, 0.4)"}`,
+              border: "1px solid " + (language === "hi" ? "rgba(251, 191, 36, 0.5)" : "rgba(56, 189, 248, 0.4)"),
               borderRadius: "999px",
-              padding: "8px 15px",
-              fontSize: "12.5px",
+              padding: "8px 14px",
+              fontSize: "12px",
               fontWeight: 800,
             }}
           >
@@ -2833,10 +3104,10 @@ export default function App() {
             style={{
               background: voiceAutoSpeak ? "rgba(52, 211, 153, 0.2)" : "rgba(148, 163, 184, 0.14)",
               color: voiceAutoSpeak ? "#6ee7b7" : "#cbd5e1",
-              border: `1px solid ${voiceAutoSpeak ? "rgba(52, 211, 153, 0.45)" : "rgba(148, 163, 184, 0.3)"}`,
+              border: "1px solid " + (voiceAutoSpeak ? "rgba(52, 211, 153, 0.45)" : "rgba(148, 163, 184, 0.3)"),
               borderRadius: "999px",
-              padding: "8px 15px",
-              fontSize: "12.5px",
+              padding: "8px 14px",
+              fontSize: "12px",
               fontWeight: 700,
             }}
           >
@@ -2865,14 +3136,36 @@ export default function App() {
           <button
             type="button"
             className="hc-btn"
+            onClick={() => {
+              const order: AccentTheme[] = ["royal", "cyber", "emerald"];
+              const next = order[(order.indexOf(accentTheme) + 1) % order.length];
+              setAccentTheme(next);
+              showToast("Theme: " + ACCENT_THEMES[next].name, "info");
+            }}
+            style={{
+              background: "rgba(148, 163, 184, 0.14)",
+              color: palette.primary,
+              border: "1px solid " + palette.border,
+              borderRadius: "999px",
+              padding: "8px 13px",
+              fontSize: "12px",
+              fontWeight: 800,
+            }}
+          >
+            🎨 {palette.name}
+          </button>
+
+          <button
+            type="button"
+            className="hc-btn"
             onClick={() => setFontComfort(fontComfort === "normal" ? "large" : "normal")}
             style={{
               background: "rgba(148, 163, 184, 0.14)",
               color: "#e2e8f0",
               border: "1px solid rgba(148, 163, 184, 0.3)",
               borderRadius: "999px",
-              padding: "8px 14px",
-              fontSize: "12.5px",
+              padding: "8px 13px",
+              fontSize: "12px",
               fontWeight: 800,
             }}
           >
@@ -2886,12 +3179,12 @@ export default function App() {
               color: "#e2e8f0",
               border: "1px solid rgba(148, 163, 184, 0.3)",
               borderRadius: "999px",
-              padding: "8px 15px",
-              fontSize: "12.5px",
+              padding: "8px 14px",
+              fontSize: "12px",
               fontWeight: 700,
             }}
           >
-            🖼 Set School BG
+            🖼 Set BG
             <input type="file" accept="image/*" onChange={handleBgUpload} style={{ display: "none" }} />
           </label>
 
@@ -2904,8 +3197,8 @@ export default function App() {
               color: "#fca5a5",
               border: "1px solid rgba(239, 68, 68, 0.4)",
               borderRadius: "999px",
-              padding: "8px 15px",
-              fontSize: "12.5px",
+              padding: "8px 14px",
+              fontSize: "12px",
               fontWeight: 700,
             }}
           >
@@ -2914,20 +3207,18 @@ export default function App() {
         </div>
       </header>
 
-      {/* MAIN PORTAL WORKSPACE */}
+      {/* MAIN WORKSPACE */}
       <main style={{ maxWidth: "1300px", width: "100%", margin: "0 auto", padding: "24px 18px", flex: 1 }}>
-        {/* ================================================================== */}
-        {/* TAB 1: MORPHING ORB AI STAGE                                       */}
-        {/* ================================================================== */}
+        {/* TAB 1: MORPHING ORB AI */}
         {activeTab === "orb" && (
           <div className="hc-desktop-grid hc-fade-up">
             <aside style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
               <div className="hc-glass-panel" style={{ borderRadius: "24px", padding: "20px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-                  <span style={{ fontSize: "14px", fontWeight: 900, color: "#fbbf24" }}>
+                  <span style={{ fontSize: "14px", fontWeight: 900, color: palette.primary }}>
                     {language === "hi" ? "सुझाए गए प्रश्न" : "Quick Exhibition Prompts"}
                   </span>
-                  <span style={{ fontSize: "11px", color: "#38bdf8", fontWeight: 700 }}>Tap to Ask</span>
+                  <span style={{ fontSize: "11px", color: palette.secondary, fontWeight: 700 }}>Tap to Ask</span>
                 </div>
 
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "14px" }}>
@@ -2943,7 +3234,7 @@ export default function App() {
                         border: "none",
                         fontSize: "11.5px",
                         fontWeight: 800,
-                        background: topicCategory === cat ? "#fbbf24" : "#1e293b",
+                        background: topicCategory === cat ? palette.primary : "#1e293b",
                         color: topicCategory === cat ? "#020617" : "#cbd5e1",
                       }}
                     >
@@ -2977,7 +3268,7 @@ export default function App() {
               </div>
 
               <div className="hc-glass-panel" style={{ borderRadius: "24px", padding: "20px" }}>
-                <div style={{ fontSize: "14px", fontWeight: 900, color: "#38bdf8", marginBottom: "12px" }}>
+                <div style={{ fontSize: "14px", fontWeight: 900, color: palette.secondary, marginBottom: "12px" }}>
                   Official School & Media Links
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
@@ -3015,6 +3306,7 @@ export default function App() {
               <MorphOrbStage
                 language={language}
                 fontSize={fontSizePx}
+                palette={palette}
                 isListening={isListening}
                 onStartVoice={startVoiceInput}
                 onAsk={handleOrbAsk}
@@ -3043,13 +3335,13 @@ export default function App() {
                     <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>
                       Questions Answered
                     </div>
-                    <div style={{ fontSize: "20px", fontWeight: 900, color: "#fbbf24" }}>{sessionCount}</div>
+                    <div style={{ fontSize: "20px", fontWeight: 900, color: palette.primary }}>{sessionCount}</div>
                   </div>
                   <div>
                     <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>
                       Faculty Profiles
                     </div>
-                    <div style={{ fontSize: "20px", fontWeight: 900, color: "#38bdf8" }}>{FACULTY_DATA.length}</div>
+                    <div style={{ fontSize: "20px", fontWeight: 900, color: palette.secondary }}>{FACULTY_DATA.length}</div>
                   </div>
                   <div>
                     <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>
@@ -3082,16 +3374,14 @@ export default function App() {
           </div>
         )}
 
-        {/* ================================================================== */}
-        {/* TAB 2: FULL CHAT FEED (BOLD FORMATTING + SMART FOLLOW-UPS)         */}
-        {/* ================================================================== */}
+        {/* TAB 2: FULL CHAT FEED */}
         {activeTab === "chat" && (
           <div className="hc-desktop-grid hc-fade-up">
             <aside className="hc-glass-panel" style={{ borderRadius: "24px", padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <HolyCrossCrestLogo size={38} />
                 <div>
-                  <div style={{ fontSize: "14px", fontWeight: 900, color: "#fbbf24" }}>Full Chat Assistant</div>
+                  <div style={{ fontSize: "14px", fontWeight: 900, color: palette.primary }}>Full Chat Assistant</div>
                   <div style={{ fontSize: "11.5px", color: "#94a3b8" }}>Clean bold & structured replies</div>
                 </div>
               </div>
@@ -3109,7 +3399,7 @@ export default function App() {
                       border: "none",
                       fontSize: "11px",
                       fontWeight: 800,
-                      background: topicCategory === cat ? "#38bdf8" : "#1e293b",
+                      background: topicCategory === cat ? palette.secondary : "#1e293b",
                       color: topicCategory === cat ? "#020617" : "#cbd5e1",
                     }}
                   >
@@ -3231,7 +3521,7 @@ export default function App() {
                             borderBottom: "1px solid rgba(148, 163, 184, 0.16)",
                           }}
                         >
-                          <span style={{ fontSize: "11.5px", fontWeight: 900, color: "#38bdf8", letterSpacing: "0.7px" }}>
+                          <span style={{ fontSize: "11.5px", fontWeight: 900, color: palette.secondary, letterSpacing: "0.7px" }}>
                             ✦ HOLY CROSS SCHOOL AI
                           </span>
                           <span style={{ fontSize: "11px", color: "#64748b" }}>{msg.timestamp}</span>
@@ -3239,7 +3529,7 @@ export default function App() {
                       )}
 
                       {msg.sender === "user" ? (
-                        <div style={{ fontSize: `${fontSizePx}px`, fontWeight: 600, color: "#fff", lineHeight: 1.55 }}>
+                        <div style={{ fontSize: fontSizePx + "px", fontWeight: 600, color: "#fff", lineHeight: 1.55 }}>
                           {msg.text}
                         </div>
                       ) : (
@@ -3307,8 +3597,8 @@ export default function App() {
                                 onClick={() =>
                                   void handleSendChat(
                                     msg.language === "hi"
-                                      ? `Explain this in clear English: ${msg.questionRef}`
-                                      : `इसे सरल हिंदी में समझाएं: ${msg.questionRef}`,
+                                      ? "Explain this in clear English: " + msg.questionRef
+                                      : "इसे सरल हिंदी में समझाएं: " + msg.questionRef,
                                     msg.language === "hi" ? "en" : "hi"
                                   )
                                 }
@@ -3327,7 +3617,7 @@ export default function App() {
                               <button
                                 type="button"
                                 className="hc-btn"
-                                onClick={() => void handleSendChat(`Explain simply in 3 short points: ${msg.questionRef}`)}
+                                onClick={() => void handleSendChat("Explain simply in 3 short points: " + msg.questionRef)}
                                 style={{
                                   background: "rgba(56, 189, 248, 0.12)",
                                   color: "#7dd3fc",
@@ -3343,7 +3633,7 @@ export default function App() {
                               <button
                                 type="button"
                                 className="hc-btn"
-                                onClick={() => void handleSendChat(`Give a practical real-life example for: ${msg.questionRef}`)}
+                                onClick={() => void handleSendChat("Give a practical real-life example for: " + msg.questionRef)}
                                 style={{
                                   background: "rgba(52, 211, 153, 0.12)",
                                   color: "#6ee7b7",
@@ -3359,7 +3649,7 @@ export default function App() {
                               <button
                                 type="button"
                                 className="hc-btn"
-                                onClick={() => void handleSendChat(`Ask me 2 quick quiz questions on: ${msg.questionRef}`)}
+                                onClick={() => void handleSendChat("Ask me 2 quick quiz questions on: " + msg.questionRef)}
                                 style={{
                                   background: "rgba(168, 85, 247, 0.16)",
                                   color: "#d8b4fe",
@@ -3394,8 +3684,8 @@ export default function App() {
                       gap: "10px",
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", fontWeight: 800, color: "#fbbf24" }}>
-                      <span className="hc-orb-core" style={{ width: "12px", height: "12px", borderRadius: "50%", background: "#fbbf24" }} />
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", fontWeight: 800, color: palette.primary }}>
+                      <span className="hc-orb-core" style={{ width: "12px", height: "12px", borderRadius: "50%", background: palette.primary }} />
                       <span>{chatThinkingStage}</span>
                     </div>
                     <div className="hc-thinking-bar" />
@@ -3421,7 +3711,7 @@ export default function App() {
               >
                 <button
                   type="button"
-                  className={`hc-btn ${isListening ? "hc-mic-live" : ""}`}
+                  className={"hc-btn " + (isListening ? "hc-mic-live" : "")}
                   onClick={() =>
                     startVoiceInput((spoken) => {
                       setChatInput(spoken);
@@ -3485,9 +3775,7 @@ export default function App() {
           </div>
         )}
 
-        {/* ================================================================== */}
-        {/* TAB 3: COMPLETE FACULTY & STAFF DIRECTORY (45 FULL DETAILED BIOS)  */}
-        {/* ================================================================== */}
+        {/* TAB 3: COMPLETE FACULTY DIRECTORY */}
         {activeTab === "faculty" && (
           <div className="hc-fade-up" style={{ display: "flex", flexDirection: "column", gap: "22px" }}>
             <div className="hc-two-col">
@@ -3498,7 +3786,7 @@ export default function App() {
                   style={{
                     borderRadius: "24px",
                     padding: "24px",
-                    borderColor: "rgba(251, 191, 36, 0.42)",
+                    borderColor: palette.border,
                     display: "flex",
                     flexDirection: "column",
                     gap: "12px",
@@ -3506,18 +3794,10 @@ export default function App() {
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
                     <div>
-                      <span
-                        style={{
-                          fontSize: "11px",
-                          fontWeight: 900,
-                          color: "#38bdf8",
-                          textTransform: "uppercase",
-                          letterSpacing: "1px",
-                        }}
-                      >
+                      <span style={{ fontSize: "11px", fontWeight: 900, color: palette.secondary, textTransform: "uppercase", letterSpacing: "1px" }}>
                         ★ {leader.wing}
                       </span>
-                      <h2 style={{ margin: "4px 0 2px", fontSize: "22px", fontWeight: 900, color: "#fbbf24" }}>
+                      <h2 style={{ margin: "4px 0 2px", fontSize: "22px", fontWeight: 900, color: palette.primary }}>
                         {leader.name}
                       </h2>
                       <div style={{ fontSize: "13.5px", fontWeight: 700, color: "#e2e8f0" }}>{leader.role}</div>
@@ -3525,7 +3805,7 @@ export default function App() {
                     <button
                       type="button"
                       className="hc-btn"
-                      onClick={() => speakText(`${leader.name}, ${leader.role}. ${leader.description}`)}
+                      onClick={() => speakText(leader.name + ", " + leader.role + ". " + leader.description)}
                       style={{
                         background: "rgba(56, 189, 248, 0.16)",
                         color: "#7dd3fc",
@@ -3539,9 +3819,7 @@ export default function App() {
                       🔊 Listen Bio
                     </button>
                   </div>
-                  <p style={{ margin: 0, fontSize: "13.5px", color: "#cbd5e1", lineHeight: 1.65 }}>
-                    {leader.description}
-                  </p>
+                  <p style={{ margin: 0, fontSize: "13.5px", color: "#cbd5e1", lineHeight: 1.65 }}>{leader.description}</p>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "4px" }}>
                     {leader.specialties.map((sp) => (
                       <span
@@ -3565,18 +3843,9 @@ export default function App() {
             </div>
 
             <div className="hc-glass-panel" style={{ borderRadius: "24px", padding: "24px" }}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                  gap: "16px",
-                  marginBottom: "18px",
-                }}
-              >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px", marginBottom: "18px" }}>
                 <div>
-                  <h2 style={{ margin: 0, fontSize: "21px", fontWeight: 900, color: "#fbbf24" }}>
+                  <h2 style={{ margin: 0, fontSize: "21px", fontWeight: 900, color: palette.primary }}>
                     Complete Faculty & Office Staff Directory ({filteredFaculty.length})
                   </h2>
                   <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#94a3b8" }}>
@@ -3593,7 +3862,7 @@ export default function App() {
                     maxWidth: "100%",
                     padding: "12px 16px",
                     borderRadius: "14px",
-                    border: "1px solid rgba(251, 191, 36, 0.42)",
+                    border: "1px solid " + palette.border,
                     background: "rgba(2, 6, 23, 0.9)",
                     color: "#f8fafc",
                     fontSize: "14px",
@@ -3616,7 +3885,7 @@ export default function App() {
                       whiteSpace: "nowrap",
                       fontSize: "12px",
                       fontWeight: 800,
-                      background: dirCategory === cat ? "#38bdf8" : "#1e293b",
+                      background: dirCategory === cat ? palette.secondary : "#1e293b",
                       color: dirCategory === cat ? "#020617" : "#cbd5e1",
                     }}
                   >
@@ -3625,14 +3894,7 @@ export default function App() {
                 ))}
               </div>
 
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))",
-                  gap: "16px",
-                  marginTop: "12px",
-                }}
-              >
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))", gap: "16px", marginTop: "12px" }}>
                 {filteredFaculty.map((f) => (
                   <div
                     key={f.id}
@@ -3647,16 +3909,12 @@ export default function App() {
                     }}
                   >
                     <div>
-                      <span style={{ fontSize: "10.5px", color: "#38bdf8", fontWeight: 900, textTransform: "uppercase" }}>
+                      <span style={{ fontSize: "10.5px", color: palette.secondary, fontWeight: 900, textTransform: "uppercase" }}>
                         {f.category} • {f.wing}
                       </span>
-                      <div style={{ fontSize: "17px", fontWeight: 900, color: "#fbbf24", marginTop: "6px" }}>
-                        {f.name}
-                      </div>
+                      <div style={{ fontSize: "17px", fontWeight: 900, color: palette.primary, marginTop: "6px" }}>{f.name}</div>
                       <div style={{ fontSize: "13px", fontWeight: 700, color: "#f8fafc", marginTop: "2px" }}>{f.role}</div>
-                      <p style={{ margin: "10px 0 0", fontSize: "12.5px", color: "#cbd5e1", lineHeight: 1.58 }}>
-                        {f.description}
-                      </p>
+                      <p style={{ margin: "10px 0 0", fontSize: "12.5px", color: "#cbd5e1", lineHeight: 1.58 }}>{f.description}</p>
                     </div>
 
                     <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", paddingTop: "8px", borderTop: "1px solid rgba(148,163,184,0.16)" }}>
@@ -3682,7 +3940,9 @@ export default function App() {
                         className="hc-btn"
                         onClick={() => {
                           setActiveTab("chat");
-                          void handleSendChat(`Give a full detailed introduction about ${f.name} (${f.role}) at Holy Cross School, Indore.`);
+                          void handleSendChat(
+                            "Give a full detailed introduction about " + f.name + " (" + f.role + ") at Holy Cross School, Indore."
+                          );
                         }}
                         style={{
                           flex: 1,
@@ -3720,18 +3980,12 @@ export default function App() {
                 <div
                   onClick={(e) => e.stopPropagation()}
                   className="hc-glass-panel hc-fade-up"
-                  style={{
-                    width: "100%",
-                    maxWidth: "580px",
-                    borderRadius: "26px",
-                    padding: "28px",
-                    borderColor: "rgba(251, 191, 36, 0.45)",
-                  }}
+                  style={{ width: "100%", maxWidth: "580px", borderRadius: "26px", padding: "28px", borderColor: palette.border }}
                 >
-                  <div style={{ fontSize: "11.5px", fontWeight: 900, color: "#38bdf8", textTransform: "uppercase" }}>
+                  <div style={{ fontSize: "11.5px", fontWeight: 900, color: palette.secondary, textTransform: "uppercase" }}>
                     {selectedFaculty.category} • {selectedFaculty.wing}
                   </div>
-                  <h3 style={{ margin: "6px 0 4px", fontSize: "24px", fontWeight: 900, color: "#fbbf24" }}>
+                  <h3 style={{ margin: "6px 0 4px", fontSize: "24px", fontWeight: 900, color: palette.primary }}>
                     {selectedFaculty.name}
                   </h3>
                   <div style={{ fontSize: "14.5px", fontWeight: 700, color: "#f8fafc", marginBottom: "14px" }}>
@@ -3765,7 +4019,9 @@ export default function App() {
                     <button
                       type="button"
                       className="hc-btn"
-                      onClick={() => speakText(`${selectedFaculty.name}, ${selectedFaculty.role}. ${selectedFaculty.description}`)}
+                      onClick={() =>
+                        speakText(selectedFaculty.name + ", " + selectedFaculty.role + ". " + selectedFaculty.description)
+                      }
                       style={{
                         background: "rgba(56, 189, 248, 0.18)",
                         color: "#7dd3fc",
@@ -3801,21 +4057,18 @@ export default function App() {
           </div>
         )}
 
-        {/* ================================================================== */}
-        {/* TAB 4: EXHIBITION SHOWCASE, INTERACTIVE QUIZ & NCERT FORMULAS      */}
-        {/* ================================================================== */}
+        {/* TAB 4: EXHIBITION SHOWCASE, QUIZ & NCERT FORMULAS */}
         {activeTab === "exhibition" && (
           <div className="hc-fade-up" style={{ display: "flex", flexDirection: "column", gap: "22px" }}>
             <div className="hc-two-col">
-              {/* OFFICIAL CAMPUS PROFILE */}
               <div className="hc-glass-panel" style={{ borderRadius: "24px", padding: "24px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "14px" }}>
                   <HolyCrossCrestLogo size={54} />
                   <div>
-                    <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 900, color: "#fbbf24" }}>
+                    <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 900, color: palette.primary }}>
                       {SCHOOL_CONFIG.schoolFullName}
                     </h2>
-                    <div style={{ fontSize: "12.5px", color: "#38bdf8", fontWeight: 700 }}>
+                    <div style={{ fontSize: "12.5px", color: palette.secondary, fontWeight: 700 }}>
                       Motto: "{SCHOOL_CONFIG.motto}"
                     </div>
                   </div>
@@ -3867,11 +4120,13 @@ export default function App() {
                 </div>
               </div>
 
-              {/* INTERACTIVE VISITOR EXHIBITION QUIZ (WORKS 100% OFFLINE) */}
-              <div className="hc-glass-panel" style={{ borderRadius: "24px", padding: "24px", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: "14px" }}>
+              <div
+                className="hc-glass-panel"
+                style={{ borderRadius: "24px", padding: "24px", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: "14px" }}
+              >
                 <div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                    <h2 style={{ margin: 0, fontSize: "19px", fontWeight: 900, color: "#38bdf8" }}>
+                    <h2 style={{ margin: 0, fontSize: "19px", fontWeight: 900, color: palette.secondary }}>
                       Interactive Exhibition Quiz
                     </h2>
                     <span
@@ -3972,11 +4227,10 @@ export default function App() {
               </div>
             </div>
 
-            {/* NCERT FORMULA VAULT */}
             <div className="hc-glass-panel" style={{ borderRadius: "24px", padding: "24px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "14px", marginBottom: "16px" }}>
                 <div>
-                  <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 900, color: "#fbbf24" }}>
+                  <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 900, color: palette.primary }}>
                     NCERT Quick Formula & Concept Vault
                   </h2>
                   <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#94a3b8" }}>
@@ -3997,7 +4251,7 @@ export default function App() {
                         border: "none",
                         fontSize: "12px",
                         fontWeight: 800,
-                        background: formulaSubject === sub ? "#fbbf24" : "#1e293b",
+                        background: formulaSubject === sub ? palette.primary : "#1e293b",
                         color: formulaSubject === sub ? "#020617" : "#cbd5e1",
                       }}
                     >
@@ -4022,12 +4276,10 @@ export default function App() {
                     }}
                   >
                     <div>
-                      <span style={{ fontSize: "10.5px", fontWeight: 900, color: "#38bdf8", textTransform: "uppercase" }}>
+                      <span style={{ fontSize: "10.5px", fontWeight: 900, color: palette.secondary, textTransform: "uppercase" }}>
                         {item.subject}
                       </span>
-                      <div style={{ fontSize: "16px", fontWeight: 800, color: "#f8fafc", marginTop: "4px" }}>
-                        {item.title}
-                      </div>
+                      <div style={{ fontSize: "16px", fontWeight: 800, color: "#f8fafc", marginTop: "4px" }}>{item.title}</div>
                       <div
                         style={{
                           margin: "10px 0",
@@ -4043,9 +4295,7 @@ export default function App() {
                       >
                         {item.formula}
                       </div>
-                      <p style={{ margin: 0, fontSize: "12.5px", color: "#cbd5e1", lineHeight: 1.55 }}>
-                        {item.explanation}
-                      </p>
+                      <p style={{ margin: 0, fontSize: "12.5px", color: "#cbd5e1", lineHeight: 1.55 }}>{item.explanation}</p>
                     </div>
                     <button
                       type="button"
@@ -4073,13 +4323,11 @@ export default function App() {
           </div>
         )}
 
-        {/* ================================================================== */}
-        {/* TAB 5: CRICKET LIVE HUB & PRO SCOREBOARD                           */}
-        {/* ================================================================== */}
+        {/* TAB 5: CRICKET LIVE HUB & SCOREBOARD */}
         {activeTab === "cricket" && (
           <div className="hc-desktop-grid hc-fade-up">
             <aside className="hc-glass-panel" style={{ borderRadius: "24px", padding: "22px", display: "flex", flexDirection: "column", gap: "14px" }}>
-              <h2 style={{ margin: 0, fontSize: "19px", fontWeight: 900, color: "#fbbf24" }}>Live Cricket Portals</h2>
+              <h2 style={{ margin: 0, fontSize: "19px", fontWeight: 900, color: palette.primary }}>Live Cricket Portals</h2>
               <p style={{ margin: 0, fontSize: "13px", color: "#94a3b8", lineHeight: 1.5 }}>
                 Follow live international, IPL, and domestic ball-by-ball scores directly:
               </p>
@@ -4112,7 +4360,7 @@ export default function App() {
               </a>
 
               <div style={{ marginTop: "8px", paddingTop: "14px", borderTop: "1px solid rgba(148,163,184,0.2)" }}>
-                <div style={{ fontSize: "12.5px", fontWeight: 800, color: "#38bdf8", marginBottom: "10px" }}>
+                <div style={{ fontSize: "12.5px", fontWeight: 800, color: palette.secondary, marginBottom: "10px" }}>
                   Edit Match Setup
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
@@ -4145,7 +4393,7 @@ export default function App() {
 
             <section className="hc-glass-panel" style={{ borderRadius: "24px", padding: "24px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", marginBottom: "18px" }}>
-                <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 900, color: "#38bdf8" }}>
+                <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 900, color: palette.secondary }}>
                   Interactive Live Match Scoreboard
                 </h2>
                 <div style={{ display: "flex", gap: "10px" }}>
@@ -4208,20 +4456,16 @@ export default function App() {
                   {matchState.target > 0 && (
                     <div style={{ fontSize: "12.5px", color: "#34d399", fontWeight: 700, marginTop: "6px" }}>
                       {runsNeeded === 0
-                        ? `${matchState.teamA} won the match!`
-                        : `Need ${runsNeeded} runs from ${ballsRemaining} balls (RRR: ${requiredRR})`}
+                        ? matchState.teamA + " won the match!"
+                        : "Need " + runsNeeded + " runs from " + ballsRemaining + " balls (RRR: " + requiredRR + ")"}
                     </div>
                   )}
                 </div>
 
                 <div style={{ textAlign: "right" }}>
                   <div style={{ fontSize: "20px", fontWeight: 900, color: "#38bdf8" }}>Overs: {oversFormatted}</div>
-                  <div style={{ fontSize: "14px", color: "#cbd5e1", marginTop: "4px", fontWeight: 700 }}>
-                    Current RR: {currentRR}
-                  </div>
-                  <div style={{ fontSize: "12px", color: "#94a3b8", marginTop: "4px" }}>
-                    Target: {matchState.target}
-                  </div>
+                  <div style={{ fontSize: "14px", color: "#cbd5e1", marginTop: "4px", fontWeight: 700 }}>Current RR: {currentRR}</div>
+                  <div style={{ fontSize: "12px", color: "#94a3b8", marginTop: "4px" }}>Target: {matchState.target}</div>
                 </div>
               </div>
 
@@ -4298,14 +4542,12 @@ export default function App() {
           </div>
         )}
 
-        {/* ================================================================== */}
-        {/* TAB 6: SEARCHABLE HISTORY & BOOKMARKED ANSWERS                     */}
-        {/* ================================================================== */}
+        {/* TAB 6: HISTORY & PINNED NOTES */}
         {activeTab === "history" && (
           <div className="hc-glass-panel hc-fade-up" style={{ borderRadius: "24px", padding: "24px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "14px", marginBottom: "18px" }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: "21px", fontWeight: 900, color: "#fbbf24" }}>
+                <h2 style={{ margin: 0, fontSize: "21px", fontWeight: 900, color: palette.primary }}>
                   Conversation History & Pinned Notes ({filteredHistory.length})
                 </h2>
                 <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#94a3b8" }}>
@@ -4351,7 +4593,7 @@ export default function App() {
                     className="hc-btn"
                     onClick={() => {
                       setHistory([]);
-                      localStorage.removeItem("hcs_history_v3");
+                      localStorage.removeItem("hcs_history_v4");
                       showToast("History cleared.", "info");
                     }}
                     style={{
@@ -4388,7 +4630,7 @@ export default function App() {
                         marginBottom: "10px",
                       }}
                     >
-                      <span style={{ fontSize: "15px", fontWeight: 900, color: "#38bdf8" }}>{item.question}</span>
+                      <span style={{ fontSize: "15px", fontWeight: 900, color: palette.secondary }}>{item.question}</span>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         <span style={{ fontSize: "11px", color: "#64748b" }}>{item.timestamp}</span>
                         <button
@@ -4456,10 +4698,10 @@ export default function App() {
           [
             { id: "orb", label: "✦ MorphOrb AI" },
             { id: "chat", label: "💬 Full Chat" },
-            { id: "faculty", label: `🏫 Faculty (${FACULTY_DATA.length})` },
+            { id: "faculty", label: "🏫 Faculty (" + FACULTY_DATA.length + ")" },
             { id: "exhibition", label: "🎓 Exhibition & Quiz" },
             { id: "cricket", label: "🏏 Cricket Live" },
-            { id: "history", label: `🕘 History (${history.length})` },
+            { id: "history", label: "🕘 History (" + history.length + ")" },
           ] as { id: ActiveTab; label: string }[]
         ).map((tab) => (
           <button
@@ -4476,7 +4718,7 @@ export default function App() {
               fontWeight: 800,
               background:
                 activeTab === tab.id
-                  ? "linear-gradient(135deg, #fbbf24, #f59e0b)"
+                  ? "linear-gradient(135deg, " + palette.primary + ", #f59e0b)"
                   : "rgba(30, 41, 59, 0.78)",
               color: activeTab === tab.id ? "#020617" : "#e2e8f0",
             }}
